@@ -15,6 +15,9 @@
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],
     "websiteURL": "https://atomi.biz",
+    "composerIcon": "./assets/icon.svg",
+    "logo": "./assets/logo.png",
+    "screenshots": [],
     "defaultPrompt": [
       "שלח לי הודעת וואטסאפ עם סיכום היום",
       "שלח תזכורת ללקוח על הפגישה מחר",
