@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // WhatsApp via Green API - send / read / setup. Node 18+ only (built-in fetch). No dependencies.
-//   node wa.mjs setup                       # first run: create scripts/.env and open it for editing
+//   node wa.mjs set --instance <id> --token <tok> --phone <my number>   # save keys + own number
 //   node wa.mjs send --to 972501234567 "message"
+//   node wa.mjs send --self "message"       # send to yourself (uses saved MY_PHONE)
 //   node wa.mjs send --group 12036300000@g.us "message"
 //   node wa.mjs read --count 10
-// Credentials: GREEN_API_URL / GREEN_API_INSTANCE / GREEN_API_TOKEN
+// Credentials: GREEN_API_URL / GREEN_API_INSTANCE / GREEN_API_TOKEN (+ optional MY_PHONE)
 // (from environment, or from a .env file next to this script).
 import fs from "node:fs";
 import path from "node:path";
@@ -26,6 +27,9 @@ const ENV_TEMPLATE = `# ================= WhatsApp - Green API =================
 GREEN_API_URL=https://XXXX.api.greenapi.com
 GREEN_API_INSTANCE=1234567890
 GREEN_API_TOKEN=your_token_here
+
+# אופציונלי - מספר ה-WhatsApp שלך, כדי שאפשר יהיה לשלוח לעצמך בקלות:
+# MY_PHONE=972501234567
 `;
 
 // A value that is empty or still a placeholder means "not configured yet".
@@ -60,13 +64,15 @@ function ensureEnvFile() {
   return true;
 }
 
-// Write the three credentials to scripts/.env (with a friendly header). Token is masked in output.
-function writeEnv({ url, instance, token }) {
-  const body = `# WhatsApp - Green API (נכתב אוטומטית, אפשר לערוך ידנית)
+// Write the credentials to scripts/.env (with a friendly header). Token is masked in output.
+// phone (the user's own WhatsApp number) is optional and saved as MY_PHONE for "send to myself".
+function writeEnv({ url, instance, token, phone }) {
+  let body = `# WhatsApp - Green API (נכתב אוטומטית, אפשר לערוך ידנית)
 GREEN_API_URL=${url}
 GREEN_API_INSTANCE=${instance}
 GREEN_API_TOKEN=${token}
 `;
+  if (phone) body += `MY_PHONE=${phone}\n`;
   fs.writeFileSync(ENV_PATH, body);
 }
 
@@ -81,6 +87,7 @@ function parseGreenUrl(raw) {
 const mask = (t) => (t && t.length > 6 ? t.slice(0, 3) + "***" + t.slice(-3) : "***");
 
 // One-paste setup: derive all three keys from a single Green API example URL, or take them explicitly.
+// --phone <the user's own WhatsApp number> is optional and saved for "send to myself".
 function runSet() {
   const fromUrl = arg("--from-url");
   let vals;
@@ -95,7 +102,7 @@ function runSet() {
     const instance = arg("--instance"), token = arg("--token");
     let url = arg("--url");
     if (!instance || !token) {
-      console.error("usage: node wa.mjs set --instance <idInstance> --token <apiToken> [--url <apiUrl>]");
+      console.error("usage: node wa.mjs set --instance <idInstance> --token <apiToken> [--url <apiUrl>] [--phone <my number>]");
       console.error("(את idInstance ואת apiTokenInstance מעתיקים מהקונסולה של Green API.)");
       process.exit(1);
     }
@@ -103,11 +110,15 @@ function runSet() {
     if (!url) url = `https://${String(instance).slice(0, 4)}.api.greenapi.com`;
     vals = { url: url.replace(/\/+$/, ""), instance, token };
   }
+  // The user's own number (optional): store normalized digits so "send to myself" just works.
+  const phoneArg = arg("--phone");
+  if (phoneArg) vals.phone = normalize(phoneArg).replace("@c.us", "");
   writeEnv(vals);
   console.log("נשמרו המפתחות ב-scripts/.env:");
   console.log("  URL      = " + vals.url);
   console.log("  INSTANCE = " + vals.instance);
   console.log("  TOKEN    = " + mask(vals.token));
+  if (vals.phone) console.log("  MY_PHONE = " + vals.phone);
   console.log("מוכן. בקשו ב-Codex לשלוח הודעת בדיקה לעצמכם.");
 }
 
@@ -191,8 +202,9 @@ if (cmd === "set") {
 if (cmd !== "send" && cmd !== "read") {
   console.error("usage:");
   console.error("  node wa.mjs setup                       # create scripts/.env and open it for editing");
-  console.error("  node wa.mjs set --instance <id> --token <token>   # write keys (apiUrl auto-derived)");
+  console.error("  node wa.mjs set --instance <id> --token <token> [--phone <my num>]   # write keys (+own number)");
   console.error("  node wa.mjs send --to <num>|--group <id> \"msg\"    # send a message");
+  console.error("  node wa.mjs send --self \"msg\"                     # send to yourself (saved number)");
   console.error("  node wa.mjs send --to <num> --file <path> --caption \"...\"   # send a file");
   console.error("  node wa.mjs read --count N              # read recent incoming messages");
   process.exit(1);
@@ -201,10 +213,19 @@ if (cmd !== "send" && cmd !== "read") {
 const env = loadEnv();
 
 if (cmd === "send") {
-  const to = arg("--to"), group = arg("--group");
+  let to = arg("--to"), group = arg("--group");
   const file = arg("--file");
   const caption = arg("--caption");
-  if (!to && !group) { console.error("need --to or --group"); process.exit(1); }
+  // "send to myself": --self, or --to me / --to myself, resolves to the saved MY_PHONE.
+  const wantsSelf = process.argv.includes("--self") || to === "me" || to === "myself" || to === "self";
+  if (wantsSelf) {
+    if (!env.MY_PHONE) {
+      console.error("לא שמור מספר טלפון שלך. הגדירו אותו: node wa.mjs set --instance <id> --token <token> --phone <המספר שלך>");
+      process.exit(1);
+    }
+    to = env.MY_PHONE;
+  }
+  if (!to && !group) { console.error("need --to or --group (or --self)"); process.exit(1); }
   const chatId = group || normalize(to);
   if (file) {
     if (!fs.existsSync(file)) { console.error("file not found:", file); process.exit(1); }

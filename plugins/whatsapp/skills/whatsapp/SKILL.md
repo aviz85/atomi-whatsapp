@@ -22,13 +22,14 @@ The credentials live in `scripts/.env`. **Do not make the user edit that file.**
 1. Tell them: open the Green API console (console.green-api.com), select their instance. It shows labeled fields.
 2. Ask for **`idInstance`** (a number). Wait for their paste.
 3. Ask for **`apiTokenInstance`** (a long token). Wait for their paste.
-4. Write the keys with the script (the `apiUrl` is derived automatically from the instance number):
+4. Ask for **their own WhatsApp number** (so they can send messages to themselves). Wait for their answer.
+5. Write everything with the script (the `apiUrl` is derived automatically from the instance number):
 
 ```bash
-node scripts/wa.mjs set --instance <idInstance> --token <apiTokenInstance>
+node scripts/wa.mjs set --instance <idInstance> --token <apiTokenInstance> --phone <their own number>
 ```
 
-That writes `scripts/.env`. Then send a test message to the user to confirm it works.
+That writes `scripts/.env` (keys + `MY_PHONE`). Then send a test message to the user to confirm it works.
 
 - If the user prefers to paste a whole example-request URL from the console instead of two fields:
   `node scripts/wa.mjs set --from-url "https://7103.api.greenapi.com/waInstance7103.../getSettings/TOKEN"`
@@ -45,6 +46,14 @@ node scripts/wa.mjs send --group 1203630000000000@g.us "הודעה לקבוצה"
 
 - `--to` accepts Israeli formats (`0501234567`, `972501234567`) and is normalized.
 - Returns the Green API `idMessage` on success.
+
+**Send to the user themselves.** When the user says "send me…" / "שלח לי…" / "remind me", use their saved number:
+
+```bash
+node scripts/wa.mjs send --self "ההודעה כאן"
+```
+
+`--self` uses `MY_PHONE` from `scripts/.env` (set during setup). If it isn't saved yet, ask the user for their number and re-run `set … --phone <number>`.
 
 ## Send a file (PDF / image / document)
 
