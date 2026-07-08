@@ -174,16 +174,28 @@ async function call(env, method, payload) {
 
 function arg(flag) { const i = process.argv.indexOf(flag); return i > -1 ? process.argv[i + 1] : undefined; }
 
-// Send a local file (PDF / image / any document) with optional caption, via Green API sendFileByUpload.
-async function sendFile(env, chatId, filePath, caption) {
+// Send a local file (PDF / image / audio / any document) with optional caption, via Green API
+// sendFileByUpload. Images arrive as images, audio as playable audio, PDF/others as documents.
+// quotedMessageId (optional) makes it a reply to a specific message.
+async function sendFile(env, chatId, filePath, caption, quotedMessageId) {
   const url = `${env.GREEN_API_URL}/waInstance${env.GREEN_API_INSTANCE}/sendFileByUpload/${env.GREEN_API_TOKEN}`;
   const buf = fs.readFileSync(filePath);
   const fd = new FormData();
   fd.append("chatId", chatId);
   if (caption) fd.append("caption", caption);
+  if (quotedMessageId) fd.append("quotedMessageId", quotedMessageId);
   fd.append("file", new Blob([buf]), path.basename(filePath));
   const res = await fetch(url, { method: "POST", body: fd });
   return res.json();
+}
+
+// Download a media file (e.g. the downloadUrl surfaced by `read`) to a local path. Returns the path.
+async function downloadUrl(url, outPath) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("download failed: HTTP " + res.status);
+  const buf = Buffer.from(await res.arrayBuffer());
+  fs.writeFileSync(outPath, buf);
+  return outPath;
 }
 
 const cmd = process.argv[2];
@@ -197,16 +209,28 @@ if (cmd === "set") {
   runSet();
   process.exit(0);
 }
+// download needs no credentials (the URL is already a direct link from `read`).
+if (cmd === "download") {
+  const u = arg("--url");
+  if (!u) { console.error("usage: node wa.mjs download --url <downloadUrl> [--out <path>]"); process.exit(1); }
+  const out = arg("--out") || path.join(HERE, "download-" + u.split("/").pop().split("?")[0]);
+  try {
+    const p = await downloadUrl(u, out);
+    console.log("saved:", p);
+  } catch (e) { console.error(String(e.message || e)); process.exit(1); }
+  process.exit(0);
+}
 
 // Only send/read need credentials. Anything else: show usage without side effects (no .env bootstrap).
 if (cmd !== "send" && cmd !== "read") {
   console.error("usage:");
   console.error("  node wa.mjs setup                       # create scripts/.env and open it for editing");
   console.error("  node wa.mjs set --instance <id> --token <token> [--phone <my num>]   # write keys (+own number)");
-  console.error("  node wa.mjs send --to <num>|--group <id> \"msg\"    # send a message");
+  console.error("  node wa.mjs send --to <num>|--group <id> \"msg\" [--quote <msgId>]   # send / reply");
   console.error("  node wa.mjs send --self \"msg\"                     # send to yourself (saved number)");
-  console.error("  node wa.mjs send --to <num> --file <path> --caption \"...\"   # send a file");
-  console.error("  node wa.mjs read --count N              # read recent incoming messages");
+  console.error("  node wa.mjs send --to <num> --file <path> --caption \"...\"   # send image/pdf/audio");
+  console.error("  node wa.mjs read --count N [--json]     # read recent incoming (media shows downloadUrl)");
+  console.error("  node wa.mjs download --url <u> [--out <path>]   # download a media file locally");
   process.exit(1);
 }
 
@@ -227,30 +251,52 @@ if (cmd === "send") {
   }
   if (!to && !group) { console.error("need --to or --group (or --self)"); process.exit(1); }
   const chatId = group || normalize(to);
+  const quote = arg("--quote"); // reply to a specific message (quoted-message style)
   if (file) {
     if (!fs.existsSync(file)) { console.error("file not found:", file); process.exit(1); }
-    const r = await sendFile(env, chatId, file, caption);
+    const r = await sendFile(env, chatId, file, caption, quote);
     console.log("sent file:", r.idMessage || JSON.stringify(r));
   } else {
     const message = process.argv[process.argv.length - 1];
-    const r = await call(env, "sendMessage", { chatId, message });
+    const payload = { chatId, message };
+    if (quote) payload.quotedMessageId = quote;
+    const r = await call(env, "sendMessage", payload);
     console.log("sent:", r.idMessage || JSON.stringify(r));
   }
 } else if (cmd === "read") {
   const count = parseInt(arg("--count") || "10", 10);
   const r = await call(env, "lastIncomingMessages", undefined);
   const msgs = Array.isArray(r) ? r : [];
-  for (const m of msgs.slice(0, count)) {
-    const who = m.senderName || m.chatId || "?";
-    const txt = m.textMessage || m.extendedTextMessage?.text || "[media]";
-    // If this message is a quote-reply, show what it replied to + the quoted message id (stanzaId).
-    if (m.typeMessage === "quotedMessage" || m.quotedMessage) {
-      const stanza = m.extendedTextMessage?.stanzaId || m.quotedMessage?.stanzaId || "?";
-      const quoted = m.quotedMessage?.textMessage || m.quotedMessage?.extendedTextMessage?.text || "";
-      const q = quoted ? ` ⟶ בתגובה ל: "${quoted.slice(0, 80)}"` : "";
-      console.log(`- ${who} [reply id=${m.idMessage} →quoted=${stanza}]: ${txt}${q}`);
-    } else {
-      console.log(`- ${who} [id=${m.idMessage}]: ${txt}`);
+  const slice = msgs.slice(0, count);
+  // --json: full structured records (quoted bodies, media urls, everything) for the model to reason over.
+  if (process.argv.includes("--json")) {
+    console.log(JSON.stringify(slice, null, 2));
+  } else {
+    for (const m of slice) {
+      const who = m.senderName || m.chatId || "?";
+      // Media (image / pdf / audio / video): surface the downloadUrl so Codex can fetch and view it.
+      const fd = m.fileMessageData || m;
+      const dl = fd.downloadUrl || m.downloadUrl;
+      const cap = fd.caption || m.caption || "";
+      const fname = fd.fileName || m.fileName || "";
+      let txt = m.textMessage || m.extendedTextMessage?.text;
+      if (!txt) {
+        if (dl) {
+          const kind = (m.typeMessage || "media").replace("Message", "");
+          txt = `[${kind}${fname ? " " + fname : ""}${cap ? ` "${cap}"` : ""}] downloadUrl=${dl}`;
+        } else {
+          txt = "[media]";
+        }
+      }
+      // If this is a quote-reply, show what it replied to + the quoted message id (stanzaId).
+      if (m.typeMessage === "quotedMessage" || m.quotedMessage) {
+        const stanza = m.extendedTextMessage?.stanzaId || m.quotedMessage?.stanzaId || "?";
+        const quoted = m.quotedMessage?.textMessage || m.quotedMessage?.extendedTextMessage?.text || "";
+        const q = quoted ? ` ⟶ בתגובה ל: "${quoted.slice(0, 200)}"` : "";
+        console.log(`- ${who} [reply id=${m.idMessage} →quoted=${stanza}]: ${txt}${q}`);
+      } else {
+        console.log(`- ${who} [id=${m.idMessage}]: ${txt}`);
+      }
     }
   }
 } else {

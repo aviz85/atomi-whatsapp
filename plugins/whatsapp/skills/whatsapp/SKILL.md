@@ -55,27 +55,48 @@ node scripts/wa.mjs send --self "ההודעה כאן"
 
 `--self` uses `MY_PHONE` from `scripts/.env` (set during setup). If it isn't saved yet, ask the user for their number and re-run `set … --phone <number>`.
 
-## Send a file (PDF / image / document)
+## Send a file (image / PDF / audio / recording / document)
 
 ```bash
 node scripts/wa.mjs send --to 972501234567 --file /tmp/invoice.pdf --caption "החשבונית שלך"
 ```
 
-Works with `--group` too. Any file type (PDF, image, doc) via Green API `sendFileByUpload`.
+Works with `--group` and `--self` too. Any file type via Green API `sendFileByUpload`: images arrive as images, audio (e.g. a recording `.mp3`/`.ogg`) as playable audio, PDF and others as documents.
+
+## Reply to a specific message (quoted-message style)
+
+To reply *to* a particular message (so it shows as a quote/reply in WhatsApp), pass its message id with `--quote`:
+
+```bash
+node scripts/wa.mjs send --to 972501234567 --quote <messageId> "התשובה שלי"
+```
+
+The `<messageId>` is the `id=` shown by `read`. Works with `--file` too.
 
 ## Read recent incoming messages
 
 ```bash
 node scripts/wa.mjs read --count 10
+# full structured records (quoted bodies, media urls, everything):
+node scripts/wa.mjs read --count 10 --json
 ```
 
-Each line shows the message id. If a message is a **quote-reply** (the user used Reply), it also shows the quoted message id (`stanzaId`) and a snippet of what it replied to:
+Each line shows the message id.
 
-```
-- אביץ [reply id=3EB0... →quoted=3EB0AA...]: כן מאשר ⟶ בתגובה ל: "בקשת אישור · משימה T1 ..."
-```
+- **Images / PDF / audio / video:** the line shows `downloadUrl=<url>` plus type and caption. To actually *see* an incoming image or read a document, download it and open the local file:
 
-So you can tell which message an answer is replying to. This is how approvals are matched to requests (see the HITL plugin, which automates it).
+  ```bash
+  node scripts/wa.mjs download --url "<the downloadUrl>" --out /tmp/incoming.jpg
+  ```
+
+  Then read `/tmp/incoming.jpg` — you (the model) can view the image directly. Same for PDFs/audio.
+- **Quote-replies:** if a message is a reply, the line also shows the quoted message id (`stanzaId`) and the quoted text, so you have the full context of what it replied to:
+
+  ```
+  - אביץ [reply id=3EB0... →quoted=3EB0AA...]: כן מאשר ⟶ בתגובה ל: "בקשת אישור · משימה T1 ..."
+  ```
+
+  For the complete quoted body and all fields, use `read --json`. This is also how approvals are matched to requests (see the HITL plugin, which automates it).
 
 **Not real-time.** `read` pulls whatever is in the Green API incoming queue at the moment it runs. There is no push/webhook here, so the agent does not reply the instant a message arrives. Replies happen when something runs `read` — on demand, or on a **scheduled task** that periodically reads new messages and answers them. Set expectations accordingly: this is a polling model, not a live chatbot.
 
