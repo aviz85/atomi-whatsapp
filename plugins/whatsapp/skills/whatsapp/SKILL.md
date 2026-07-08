@@ -11,6 +11,23 @@ allowed-tools: Bash, Read
 
 Send and read WhatsApp from Codex through the [Green API](https://green-api.com).
 
+## Commands (run + params, that's it)
+
+Each capability is a single command. No install, no config files to hand-edit.
+
+```bash
+node scripts/wa.mjs set --instance <id> --token <tok> --phone <my number>  # save keys (once)
+node scripts/wa.mjs send --self "..."                              # message yourself
+node scripts/wa.mjs send --to <num> "..."                          # message someone
+node scripts/wa.mjs send --group <id>@g.us "..."                   # message a group
+node scripts/wa.mjs send --to <num> --file <path> --caption "..."  # send image / pdf / audio
+node scripts/wa.mjs send --to <num> --quote <msgId> "..."          # reply to a message
+node scripts/wa.mjs read --count 10 [--json]                       # read recent incoming
+node scripts/wa.mjs download --url "<downloadUrl>" --out <path>    # save incoming media
+```
+
+Details for each are below.
+
 ## Requirement
 
 **Node.js 18 or newer** (uses the built-in `fetch`, no packages to install). Check with `node --version`. If missing, install from https://nodejs.org (LTS).
