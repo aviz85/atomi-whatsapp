@@ -2,7 +2,7 @@
 name: whatsapp
 description: Send and read WhatsApp messages via the Green API. Use when the user wants to send a WhatsApp message, a reminder, a notification, or to read recent incoming WhatsApp messages.
 version: "1.0.0"
-author: aviz85
+author: atomi
 tags: [whatsapp, green-api, messaging]
 allowed-tools: Bash, Read
 ---
@@ -93,7 +93,7 @@ Each line shows the message id.
 - **Quote-replies:** if a message is a reply, the line also shows the quoted message id (`stanzaId`) and the quoted text, so you have the full context of what it replied to:
 
   ```
-  - אביץ [reply id=3EB0... →quoted=3EB0AA...]: כן מאשר ⟶ בתגובה ל: "בקשת אישור · משימה T1 ..."
+  - דנה [reply id=3EB0... →quoted=3EB0AA...]: כן מאשר ⟶ בתגובה ל: "בקשת אישור · משימה T1 ..."
   ```
 
   For the complete quoted body and all fields, use `read --json`. This is also how approvals are matched to requests (see the HITL plugin, which automates it).
