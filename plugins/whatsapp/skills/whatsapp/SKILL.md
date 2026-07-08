@@ -49,6 +49,12 @@ The credentials live in `scripts/.env`. **Do not ask the user to paste the token
    ```
    If it sends, setup succeeded — continue. If the script reports missing/placeholder keys, tell the user exactly which field is still empty in the document, and ask them to fix, save, and say "סיימתי" again.
 
+**Critical — enable webhook notifications so `read` works.** Before reading can pull any messages, the user MUST turn ON the incoming-message notifications in the Green API instance settings. In the console (console.green-api.com → their instance) open the **"וובהוק"** (webhook) section and turn on:
+   - **"קבל התראת וובהוק בעת קבלת הודעות נכנסות (כולל קבצים)"** (receive incoming messages, including files) → ON
+   - **"קבל וובהוק על הודעות שנשלחו ממכשיר הפלאפון"** (messages sent from the phone) → ON
+
+   No webhook URL is needed — the plugin polls, it does not receive pushes. But without the incoming-message notification turned ON, Green API never queues incoming messages and `read` will always come back empty. The outgoing (from-phone) toggle lets self/sent messages be tracked too. Tell the user to save after flipping the toggles.
+
 Advanced fallback (only if the user explicitly prefers passing values directly instead of the document):
 - `node scripts/wa.mjs set --instance <idInstance> --token <apiTokenInstance> --phone <their number>`
 - or from a full example-request URL: `node scripts/wa.mjs set --from-url "https://7103.api.greenapi.com/waInstance7103.../getSettings/TOKEN"`
@@ -117,6 +123,8 @@ Each line shows the message id.
   ```
 
   For the complete quoted body and all fields, use `read --json`. This is also how approvals are matched to requests (see the HITL plugin, which automates it).
+
+**Nothing comes back?** If `read` returns nothing / incoming messages are never seen, the incoming-message webhook notification is almost certainly OFF in Green API. Have the user enable it in the console under the "וובהוק" section (see Setup above) - without it Green API does not queue incoming messages at all.
 
 **Not real-time.** `read` pulls whatever is in the Green API incoming queue at the moment it runs. There is no push/webhook here, so the agent does not reply the instant a message arrives. Replies happen when something runs `read` — on demand, or on a **scheduled task** that periodically reads new messages and answers them. Set expectations accordingly: this is a polling model, not a live chatbot.
 

@@ -135,6 +135,7 @@ function runSetup() {
   }
   console.log("בתוך המסמך מדביקים את idInstance ואת apiTokenInstance מהקונסולה של Green API (ואת מספר הטלפון), שומרים (Cmd+S / Ctrl+S),");
   console.log('וחוזרים לכאן וכותבים "סיימתי". אז אמשיך ואבדוק שהחיבור עובד.');
+  console.log('חשוב: כדי שקריאת הודעות נכנסות תעבוד, יש להדליק בקונסולה של Green API, בקטע "וובהוק", את ההתראה על הודעות נכנסות (וגם על הודעות שנשלחו מהפלאפון). בלי זה אין מה לקרוא.');
 }
 
 function loadEnv() {
@@ -269,6 +270,10 @@ if (cmd === "send") {
   const r = await call(env, "lastIncomingMessages", undefined);
   const msgs = Array.isArray(r) ? r : [];
   const slice = msgs.slice(0, count);
+  // Empty queue is often a disabled incoming webhook in Green API, not "no messages". Nudge the user.
+  if (slice.length === 0 && !process.argv.includes("--json")) {
+    console.error('אין הודעות נכנסות בתור. אם ציפיתם להודעות: בדקו שבקונסולה של Green API, בקטע "וובהוק", ההתראה על הודעות נכנסות דלוקה (בלעדיה Green API לא צובר הודעות נכנסות).');
+  }
   // --json: full structured records (quoted bodies, media urls, everything) for the model to reason over.
   if (process.argv.includes("--json")) {
     console.log(JSON.stringify(slice, null, 2));
