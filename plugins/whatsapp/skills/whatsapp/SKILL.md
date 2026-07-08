@@ -16,7 +16,7 @@ Send and read WhatsApp from Codex through the [Green API](https://green-api.com)
 Each capability is a single command. No install, no config files to hand-edit.
 
 ```bash
-node scripts/wa.mjs set --instance <id> --token <tok> --phone <my number>  # save keys (once)
+node scripts/wa.mjs setup                                          # first time: open the keys document to fill
 node scripts/wa.mjs send --self "..."                              # message yourself
 node scripts/wa.mjs send --to <num> "..."                          # message someone
 node scripts/wa.mjs send --group <id>@g.us "..."                   # message a group
@@ -32,25 +32,26 @@ Details for each are below.
 
 **Node.js 18 or newer** (uses the built-in `fetch`, no packages to install). Check with `node --version`. If missing, install from https://nodejs.org (LTS).
 
-## Setup (once) — connect the keys FOR the user, in chat
+## Setup (once) — the user fills the keys in a DOCUMENT, not in the chat
 
-The credentials live in `scripts/.env`. **Do not make the user edit that file.** On first use (or whenever the script reports keys are missing), onboard them conversationally:
+The credentials live in `scripts/.env`. **Do not ask the user to paste the token into the chat** — it is a secret and should not sit in the conversation. Use the document flow:
 
-1. Tell them: open the Green API console (console.green-api.com), select their instance. It shows labeled fields.
-2. Ask for **`idInstance`** (a number). Wait for their paste.
-3. Ask for **`apiTokenInstance`** (a long token). Wait for their paste.
-4. Ask for **their own WhatsApp number** (so they can send messages to themselves). Wait for their answer.
-5. Write everything with the script (the `apiUrl` is derived automatically from the instance number):
+1. Run the setup command:
+   ```bash
+   node scripts/wa.mjs setup
+   ```
+   It creates the keys document and prints its path (and tries to open it in the editor).
+2. Show the user that path as a clickable link and tell them: open it, and from the Green API console (console.green-api.com → their instance) paste **`idInstance`**, **`apiTokenInstance`**, and their **own WhatsApp number** into the matching fields, then **save** (Cmd+S / Ctrl+S).
+3. **Wait** for the user to say they finished ("סיימתי").
+4. Then verify — send a test message to the user themselves:
+   ```bash
+   node scripts/wa.mjs send --self "בדיקה: החיבור עובד ✅"
+   ```
+   If it sends, setup succeeded — continue. If the script reports missing/placeholder keys, tell the user exactly which field is still empty in the document, and ask them to fix, save, and say "סיימתי" again.
 
-```bash
-node scripts/wa.mjs set --instance <idInstance> --token <apiTokenInstance> --phone <their own number>
-```
-
-That writes `scripts/.env` (keys + `MY_PHONE`). Then send a test message to the user to confirm it works.
-
-- If the user prefers to paste a whole example-request URL from the console instead of two fields:
-  `node scripts/wa.mjs set --from-url "https://7103.api.greenapi.com/waInstance7103.../getSettings/TOKEN"`
-- If the user would rather fill the file by hand: `node scripts/wa.mjs setup` creates `scripts/.env` and opens it in a text editor.
+Advanced fallback (only if the user explicitly prefers passing values directly instead of the document):
+- `node scripts/wa.mjs set --instance <idInstance> --token <apiTokenInstance> --phone <their number>`
+- or from a full example-request URL: `node scripts/wa.mjs set --from-url "https://7103.api.greenapi.com/waInstance7103.../getSettings/TOKEN"`
 - The script also reads `GREEN_API_URL` / `GREEN_API_INSTANCE` / `GREEN_API_TOKEN` from the environment if set.
 
 ## Send a message

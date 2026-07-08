@@ -18,9 +18,10 @@ const REQUIRED = ["GREEN_API_URL", "GREEN_API_INSTANCE", "GREEN_API_TOKEN"];
 
 // Fresh .env template (Hebrew guidance baked in so beginners see what to do when the file opens).
 const ENV_TEMPLATE = `# ================= WhatsApp - Green API =================
-# מלאו את שלושת הערכים מתוך הקונסולה של Green API, ואז שמרו את הקובץ.
-#   (מק: Cmd+S  |  ווינדוס: Ctrl+S)
-# אחרי ששמרתם - חזרו ל-Codex ובקשו לשלוח הודעת בדיקה לעצמכם.
+# זהו המסמך שבו מדביקים את המפתחות (לא צריך להדביק אותם בצ'אט).
+# מדביקים כאן את הערכים מהקונסולה של Green API, שומרים את הקובץ,
+# וחוזרים ל-Codex וכותבים "סיימתי".
+#   שמירה: מק Cmd+S  |  ווינדוס Ctrl+S
 # את הערכים לוקחים ממסך ה-Instance בקונסולה: apiUrl, idInstance, apiTokenInstance.
 # =========================================================
 
@@ -28,8 +29,9 @@ GREEN_API_URL=https://XXXX.api.greenapi.com
 GREEN_API_INSTANCE=1234567890
 GREEN_API_TOKEN=your_token_here
 
-# אופציונלי - מספר ה-WhatsApp שלך, כדי שאפשר יהיה לשלוח לעצמך בקלות:
-# MY_PHONE=972501234567
+# מספר ה-WhatsApp שלך (עם קידומת המדינה, למשל 972501234567) - כדי שאפשר יהיה לשלוח לעצמך.
+# אפשר להשאיר ריק בינתיים.
+MY_PHONE=
 `;
 
 // A value that is empty or still a placeholder means "not configured yet".
@@ -126,14 +128,13 @@ function runSet() {
 function runSetup() {
   const created = ensureEnvFile();
   const opened = openInEditor(ENV_PATH);
-  console.log(created ? "נוצר קובץ המפתחות:" : "קובץ המפתחות כבר קיים:");
+  console.log(created ? "נוצר מסמך המפתחות. פתחו אותו:" : "מסמך המפתחות כבר קיים. פתחו אותו:");
   console.log("  " + ENV_PATH);
   if (opened) {
-    console.log("פתחתי אותו בעורך הטקסט. מלאו את שלושת הערכים מ-Green API ושמרו (Cmd+S / Ctrl+S).");
-  } else {
-    console.log("פתחו אותו ידנית בעורך טקסט ומלאו את שלושת הערכים מ-Green API, ואז שמרו.");
+    console.log("(פתחתי אותו בשבילכם בעורך.)");
   }
-  console.log("אחרי ששמרתם, בקשו ב-Codex לשלוח הודעת בדיקה לעצמכם.");
+  console.log("בתוך המסמך מדביקים את idInstance ואת apiTokenInstance מהקונסולה של Green API (ואת מספר הטלפון), שומרים (Cmd+S / Ctrl+S),");
+  console.log('וחוזרים לכאן וכותבים "סיימתי". אז אמשיך ואבדוק שהחיבור עובד.');
 }
 
 function loadEnv() {
