@@ -1,0 +1,25 @@
+{
+  "name": "whatsapp",
+  "version": "1.0.0",
+  "description": "Send and read WhatsApp messages from Codex via the Green API. Use whenever the user wants to send a WhatsApp message, notify someone, send a reminder, or read recent incoming WhatsApp messages.",
+  "author": { "name": "AVIZ", "url": "https://atomi.biz" },
+  "homepage": "https://atomi.biz",
+  "license": "MIT",
+  "keywords": ["whatsapp", "green-api", "messaging", "notify", "reminder"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "WhatsApp",
+    "shortDescription": "שליחה וקריאה של WhatsApp מתוך Codex",
+    "longDescription": "פלאגין WhatsApp מאפשר ל-Codex לשלוח ולקרוא הודעות WhatsApp דרך Green API. מתחברים פעם אחת עם פרטי ה-Green API (instance + token), ומכאן הסוכן יכול לשלוח הודעות, תזכורות והתראות, ולקרוא הודעות נכנסות. כל פעולה רגישה עוברת דרך אישור.",
+    "developerName": "AVIZ",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "websiteURL": "https://atomi.biz",
+    "defaultPrompt": [
+      "שלח לי הודעת וואטסאפ עם סיכום היום",
+      "שלח תזכורת ללקוח על הפגישה מחר",
+      "קרא את ההודעות האחרונות שנכנסו"
+    ],
+    "brandColor": "#11CFD0"
+  }
+}
