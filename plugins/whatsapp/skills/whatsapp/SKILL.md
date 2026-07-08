@@ -55,6 +55,8 @@ node scripts/wa.mjs send --self "ההודעה כאן"
 
 `--self` uses `MY_PHONE` from `scripts/.env` (set during setup). If it isn't saved yet, ask the user for their number and re-run `set … --phone <number>`.
 
+The Green API instance *is* the user's own WhatsApp account (they authorized it by scanning the QR with their personal phone), so every message goes out **as them**. Sending to their own number therefore lands in their own "הודעה לעצמי" (note-to-self) chat, shown as sent by them — WhatsApp marks it with a single tick (`sent`) since sender and recipient are the same account.
+
 ## Send a file (image / PDF / audio / recording / document)
 
 ```bash
