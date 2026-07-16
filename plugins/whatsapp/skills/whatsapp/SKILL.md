@@ -1,7 +1,7 @@
 ---
 name: whatsapp
 description: Send and read WhatsApp messages via the Green API. Use when the user wants to send a WhatsApp message, a reminder, a notification, or to read recent incoming WhatsApp messages.
-version: "1.0.0"
+version: "1.0.1"
 author: atomi
 tags: [whatsapp, green-api, messaging]
 allowed-tools: Bash, Read
@@ -16,7 +16,7 @@ Send and read WhatsApp from Codex through the [Green API](https://green-api.com)
 Each capability is a single command. No install, no config files to hand-edit.
 
 ```bash
-node scripts/wa.mjs setup                                          # first time: open the keys document to fill
+node scripts/wa.mjs check                                          # credentials present? (call this FIRST, always)
 node scripts/wa.mjs send --self "..."                              # message yourself
 node scripts/wa.mjs send --to <num> "..."                          # message someone
 node scripts/wa.mjs send --group <id>@g.us "..."                   # message a group
@@ -32,22 +32,29 @@ Details for each are below.
 
 **Node.js 18 or newer** (uses the built-in `fetch`, no packages to install). Check with `node --version`. If missing, install from https://nodejs.org (LTS).
 
-## Setup (once) — the user fills the keys in a DOCUMENT, not in the chat
+## Credentials are global — one file, every project, every session
 
-The credentials live in `scripts/.env`. **Do not ask the user to paste the token into the chat** — it is a secret and should not sit in the conversation. Use the document flow:
+The keys live in **one file outside this plugin entirely**: `~/.atomi-whatsapp/.env` in the user's home directory. This is deliberate — Codex re-materializes plugin files into a versioned cache (and a separate ephemeral staging clone) on every install/update, so anything stored next to the script would be wiped on the next sync. Storing it under the home directory instead means it survives plugin updates, and is shared automatically across every Codex project and every session — the user configures it once, ever.
 
-1. Run the setup command:
-   ```bash
-   node scripts/wa.mjs setup
-   ```
-   It creates the keys document and prints its path (and tries to open it in the editor).
-2. Show the user that path as a clickable link and tell them: open it, and from the Green API console (console.green-api.com → their instance) paste **`idInstance`**, **`apiTokenInstance`**, and their **own WhatsApp number** into the matching fields, then **save** (Cmd+S / Ctrl+S).
-3. **Wait** for the user to say they finished ("סיימתי").
-4. Then verify — send a test message to the user themselves:
-   ```bash
-   node scripts/wa.mjs send --self "בדיקה: החיבור עובד ✅"
-   ```
-   If it sends, setup succeeded — continue. If the script reports missing/placeholder keys, tell the user exactly which field is still empty in the document, and ask them to fix, save, and say "סיימתי" again.
+## Before ANY send/read: run `check` first — never guess, never open the document yourself
+
+`check` is a 100%-deterministic script gate. No network call, no judgment call — it only looks at whether the required keys are present:
+
+```bash
+node scripts/wa.mjs check
+```
+
+- **Exit 0, prints `OK`:** credentials are present. Proceed straight to `send`/`read` — do not open or read the .env file yourself, do not ask the user anything.
+- **Exit non-zero:** credentials are missing. The script *itself* already created (or migrated) the keys document and opened it in the user's editor — you do not need to open, read, or explain the file's contents. Just tell the user: the keys document opened, paste `idInstance` / `apiTokenInstance` / their own WhatsApp number from the Green API console (console.green-api.com → their instance) into the matching fields, save (Cmd+S / Ctrl+S), and say "סיימתי". **Then run `check` again** before retrying the action — do not call `send`/`read` directly.
+
+**Never ask the user to paste the token into the chat** — it is a secret and must not sit in the conversation; the document flow above is the only path.
+
+Once `check` passes, `send`/`read` themselves also re-verify before doing anything (defense in depth), so calling them directly after a passing `check` is always safe.
+
+**First-time live verification (optional but recommended right after setup):** `check` only confirms the keys are *present*, not that they actually work. After a fresh `check` passes for the first time, send a real test message to confirm the connection itself is good:
+```bash
+node scripts/wa.mjs send --self "בדיקה: החיבור עובד ✅"
+```
 
 **Critical — enable webhook notifications so `read` works.** Before reading can pull any messages, the user MUST turn ON the incoming-message notifications in the Green API instance settings. In the console (console.green-api.com → their instance) open the **"וובהוק"** (webhook) section and turn on:
    - **"קבל התראת וובהוק בעת קבלת הודעות נכנסות (כולל קבצים)"** (receive incoming messages, including files) → ON
@@ -77,7 +84,7 @@ node scripts/wa.mjs send --group 1203630000000000@g.us "הודעה לקבוצה"
 node scripts/wa.mjs send --self "ההודעה כאן"
 ```
 
-`--self` uses `MY_PHONE` from `scripts/.env` (set during setup). If it isn't saved yet, ask the user for their number and re-run `set … --phone <number>`.
+`--self` uses `MY_PHONE` from the global keys file (set during setup). If it isn't saved yet, ask the user for their number and re-run `set … --phone <number>`.
 
 The Green API instance *is* the user's own WhatsApp account (they authorized it by scanning the QR with their personal phone), so every message goes out **as them**. Sending to their own number therefore lands in their own "הודעה לעצמי" (note-to-self) chat, shown as sent by them — WhatsApp marks it with a single tick (`sent`) since sender and recipient are the same account.
 

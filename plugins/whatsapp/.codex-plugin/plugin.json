@@ -1,6 +1,6 @@
 {
   "name": "whatsapp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Send and read WhatsApp messages from Codex via the Green API. Use whenever the user wants to send a WhatsApp message, notify someone, send a reminder, or read recent incoming WhatsApp messages.",
   "author": { "name": "עסק אטומי", "url": "https://atomi.biz" },
   "homepage": "https://atomi.biz",
