@@ -94,13 +94,18 @@ GREEN_API_TOKEN=your_token_here
 # מספר ה-WhatsApp שלך (עם קידומת המדינה) - כדי שאפשר יהיה לשלוח לעצמך.
 # תחליפו את ה-x's במספר האמיתי, למשל 972501234567:
 MY_PHONE=9725xxxxxxxx
+
+# ================= ElevenLabs (רשות, אותו קובץ) =================
+# מפתח מ-https://elevenlabs.io/app/settings/api-keys
+ELEVENLABS_API_KEY=your_elevenlabs_key
+ELEVENLABS_VOICE_ID=xxxxxxxxxxxxxxxxxxxxxxxx
 `;
 
 // A value that is empty or still a placeholder means "not configured yet".
 function isPlaceholder(v) {
   if (!v) return true;
   const s = String(v).trim();
-  return s === "" || /x{4,}/i.test(s) || s === "1234567890" || s === "your_token_here";
+  return s === "" || /x{4,}/i.test(s) || s === "1234567890" || s === "your_token_here" || s === "your_elevenlabs_key";
 }
 
 // Open a file in the OS default TEXT editor, cross-platform, without blocking.
@@ -283,8 +288,9 @@ function arg(flag) { const i = process.argv.indexOf(flag); return i > -1 ? proce
 // Send a local file (PDF / image / audio / any document) with optional caption, via Green API
 // sendFileByUpload. Images arrive as images, audio as playable audio, PDF/others as documents.
 // quotedMessageId (optional) makes it a reply to a specific message.
-async function sendFile(env, chatId, filePath, caption, quotedMessageId) {
-  const url = `${env.GREEN_API_URL}/waInstance${env.GREEN_API_INSTANCE}/sendFileByUpload/${env.GREEN_API_TOKEN}`;
+async function sendFile(env, chatId, filePath, caption, quotedMessageId, asVoice) {
+  const method = asVoice ? "sendPTTByUpload" : "sendFileByUpload";
+  const url = `${env.GREEN_API_URL}/waInstance${env.GREEN_API_INSTANCE}/${method}/${env.GREEN_API_TOKEN}`;
   const buf = fs.readFileSync(filePath);
   const fd = new FormData();
   fd.append("chatId", chatId);
@@ -357,7 +363,8 @@ if (cmd !== "send" && cmd !== "read") {
   console.error("  node wa.mjs send --to <num>|--group <id> \"msg\" [--quote <msgId>]   # send / reply");
   console.error("  node wa.mjs send --self \"msg\"                     # send to yourself (saved number)");
   console.error("  node wa.mjs send --to <num> --file <path> --caption \"...\"   # send image/pdf/audio");
-  console.error("  node wa.mjs read --count N [--json]     # read recent incoming (media shows downloadUrl)");
+  console.error("  node wa.mjs send --self --voice ./voice.mp3                 # send as voice note");
+  console.error("  node wa.mjs read --count N [--json] [--group id|--chat num] # incoming, or one chat");
   console.error("  node wa.mjs download --url <u> [--out <path>]   # download a media file locally");
   process.exit(1);
 }
@@ -366,7 +373,8 @@ const env = loadEnv();
 
 if (cmd === "send") {
   let to = arg("--to"), group = arg("--group");
-  const file = arg("--file");
+  const file = arg("--file") || arg("--voice");
+  const asVoice = Boolean(arg("--voice"));
   const caption = arg("--caption");
   // "send to myself": --self, or --to me / --to myself, resolves to the saved MY_PHONE.
   const wantsSelf = process.argv.includes("--self") || to === "me" || to === "myself" || to === "self";
@@ -382,8 +390,8 @@ if (cmd === "send") {
   const quote = arg("--quote"); // reply to a specific message (quoted-message style)
   if (file) {
     if (!fs.existsSync(file)) { console.error("file not found:", file); process.exit(1); }
-    const r = await sendFile(env, chatId, file, caption, quote);
-    console.log("sent file:", r.idMessage || JSON.stringify(r));
+    const r = await sendFile(env, chatId, file, caption, quote, asVoice);
+    console.log(asVoice ? "sent voice:" : "sent file:", r.idMessage || JSON.stringify(r));
   } else {
     const message = process.argv[process.argv.length - 1];
     const payload = { chatId, message };
@@ -393,7 +401,15 @@ if (cmd === "send") {
   }
 } else if (cmd === "read") {
   const count = parseInt(arg("--count") || "10", 10);
-  const r = await call(env, "lastIncomingMessages", undefined);
+  const group = arg("--group");
+  const chat = arg("--chat");
+  let r;
+  if (group || chat) {
+    const chatId = group || normalize(chat);
+    r = await call(env, "getChatHistory", { chatId, count });
+  } else {
+    r = await call(env, "lastIncomingMessages", undefined);
+  }
   const msgs = Array.isArray(r) ? r : [];
   const slice = msgs.slice(0, count);
   // Empty queue is often a disabled incoming webhook in Green API, not "no messages". Nudge the user.

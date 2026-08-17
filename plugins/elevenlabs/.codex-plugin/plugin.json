@@ -1,0 +1,28 @@
+{
+  "name": "elevenlabs",
+  "version": "1.0.0",
+  "description": "Generate spoken audio with ElevenLabs TTS. Saves an mp3 in the current project. Keys live in the project's .env. Node.js only.",
+  "author": { "name": "עסק אטומי", "url": "https://atomi.biz" },
+  "homepage": "https://atomi.biz",
+  "license": "MIT",
+  "keywords": ["elevenlabs", "tts", "voice", "audio", "recording"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "ElevenLabs",
+    "shortDescription": "הקלטת קול מטקסט בתוך הפרויקט",
+    "longDescription": "מייצר קובץ קול (mp3) מטקסט דרך ElevenLabs. המפתחות נשמרים ב-.env של הפרויקט הנוכחי. דורש Node.js 18+. בלי Python.",
+    "developerName": "עסק אטומי",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "websiteURL": "https://atomi.biz",
+    "composerIcon": "./assets/icon.svg",
+    "logo": "./assets/icon.svg",
+    "screenshots": [],
+    "defaultPrompt": [
+      "תקליט לי סקירת בוקר קצרה",
+      "תהפוך את הטקסט הזה להקלטה",
+      "חבר לי את ElevenLabs"
+    ],
+    "brandColor": "#B91C1C"
+  }
+}

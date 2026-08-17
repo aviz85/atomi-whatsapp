@@ -1,7 +1,7 @@
 ---
 name: whatsapp
 description: Send and read WhatsApp messages via the Green API. Use when the user wants to send a WhatsApp message, a reminder, a notification, or to read recent incoming WhatsApp messages.
-version: "1.1.0"
+version: "1.1.1"
 author: atomi
 tags: [whatsapp, green-api, messaging]
 allowed-tools: Bash, Read
@@ -23,7 +23,9 @@ node scripts/wa.mjs send --to <num> "..."                          # message som
 node scripts/wa.mjs send --group <id>@g.us "..."                   # message a group
 node scripts/wa.mjs send --to <num> --file <path> --caption "..."  # send image / pdf / audio
 node scripts/wa.mjs send --to <num> --quote <msgId> "..."          # reply to a message
-node scripts/wa.mjs read --count 10 [--json]                       # read recent incoming
+node scripts/wa.mjs read --count 10 [--json]                       # recent incoming
+node scripts/wa.mjs read --group <id>@g.us --count 15              # one group
+node scripts/wa.mjs send --self --voice ./voice.mp3                # send a voice note
 node scripts/wa.mjs download --url "<downloadUrl>" --out ./file    # save incoming media in this project
 ```
 
