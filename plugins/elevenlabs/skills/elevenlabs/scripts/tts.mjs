@@ -67,8 +67,9 @@ const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // ElevenLabs premade "Rachel"
 const ELEVEN_BLOCK = `# ================= ElevenLabs =================
 # מפתח מ-https://elevenlabs.io/app/developers/api-keys
 ELEVENLABS_API_KEY=your_elevenlabs_key
-# רשות. יצירת קול: https://elevenlabs.io/app/speech-synthesis/speech-to-speech?action=create
-# אם ריק - ניקח קול ברירת מחדל מהחשבון.
+# רשות. בחינם משאירים ריק - נבחר קול קיים מהחשבון.
+# ספרייה: https://elevenlabs.io/app/voices
+# יצירת קול חדש דורשת מנוי.
 ELEVENLABS_VOICE_ID=
 `;
 
@@ -161,7 +162,7 @@ function runSetup() {
   console.log("מסמך המפתחות נפתח בפרויקט:");
   console.log("  " + envRel());
   if (opened) console.log("(פתחתי אותו בשבילכם בעורך.)");
-  console.log("מדביקים ELEVENLABS_API_KEY (ו-ELEVENLABS_VOICE_ID אם יש), שומרים, וכותבים \"סיימתי\".");
+  console.log("מדביקים ELEVENLABS_API_KEY. ELEVENLABS_VOICE_ID אפשר להשאיר ריק (קול קיים). שומרים, וכותבים \"סיימתי\".");
 }
 
 function arg(flag) {

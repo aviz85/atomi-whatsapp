@@ -20,8 +20,9 @@ Keys live in **`.env` at the root of the current project**. This plugin never wr
 - If WhatsApp already created `.env`, this plugin **appends** the ElevenLabs fields. One file, one project.
 
 Required: `ELEVENLABS_API_KEY` from https://elevenlabs.io/app/developers/api-keys
-Optional: `ELEVENLABS_VOICE_ID`. Create a voice at https://elevenlabs.io/app/speech-synthesis/speech-to-speech?action=create (paid). If empty, the script picks a default from the account.
-Speak UI: https://elevenlabs.io/app/speech-synthesis/text-to-speech
+Optional: `ELEVENLABS_VOICE_ID`. Leave empty on a free account - the script picks an existing library voice. Free accounts cannot create a new voice. A custom clone needs a paid plan: https://elevenlabs.io/app/speech-synthesis/speech-to-speech?action=create
+Speak UI (existing voices): https://elevenlabs.io/app/speech-synthesis/text-to-speech
+Voice library: https://elevenlabs.io/app/voices
 
 Never ask the user to paste the key into the chat.
 
