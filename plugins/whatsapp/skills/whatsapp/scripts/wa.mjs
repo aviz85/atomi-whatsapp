@@ -6,8 +6,7 @@
 //   node wa.mjs send --self "message"       # send to yourself (uses saved MY_PHONE)
 //   node wa.mjs send --group 12036300000@g.us "message"
 //   node wa.mjs read --count 10
-// Credentials: GREEN_API_URL / GREEN_API_INSTANCE / GREEN_API_TOKEN (+ optional MY_PHONE)
-// (from environment, or from a global .env — see ENV_PATH below).
+// Credentials live in the CURRENT PROJECT: ./.env (gitignored). Never write outside the repo.
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -15,22 +14,74 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-// The .env must NOT live next to this script. Codex re-materializes plugin
-// files into a versioned cache directory (and a separate ephemeral .tmp
-// staging clone) on every install/update — anything saved next to the
-// script is lost on the next version bump or re-sync, which is exactly why
-// this used to ask every project to re-enter the keys. Store credentials
-// once, globally, under the user's home directory, completely outside any
-// Codex-managed path, so every project/version/session reads the same file.
-const GLOBAL_DIR = path.join(os.homedir(), ".atomi-whatsapp");
-const ENV_PATH = path.join(GLOBAL_DIR, ".env");
-const LEGACY_ENV_PATH = path.join(HERE, ".env"); // pre-global-fix location, migrated automatically
 const REQUIRED = ["GREEN_API_URL", "GREEN_API_INSTANCE", "GREEN_API_TOKEN"];
+const ENV_REL = ".env";
+
+function isPluginCache(p) {
+  const n = String(p || "").replace(/\\/g, "/");
+  return n.includes("/.codex/plugins") || n.includes("/.codex/tmp");
+}
+
+function walkGit(start) {
+  let dir = path.resolve(start);
+  while (true) {
+    if (isPluginCache(dir)) return null;
+    if (fs.existsSync(path.join(dir, ".git"))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+
+function findProjectRoot() {
+  const cwd = path.resolve(process.cwd());
+
+  // Prefer the directory the command actually ran in, when it is a project.
+  if (!isPluginCache(cwd)) {
+    return walkGit(cwd) || cwd;
+  }
+
+  // Script was launched from the plugin cache: use workspace hints, still local.
+  for (const start of [process.env.CODEX_WORKSPACE, process.env.INIT_CWD, process.env.PWD]) {
+    if (!start || isPluginCache(start)) continue;
+    const git = walkGit(start);
+    if (git) return git;
+    return path.resolve(start);
+  }
+
+  throw new Error("אין תיקיית פרויקט לכתיבה. הריצו את הפקודה מתוך תיקיית הפרויקט.");
+}
+
+function projectRoot() {
+  return findProjectRoot();
+}
+
+function envPath() {
+  return path.join(projectRoot(), ENV_REL);
+}
+
+function envRel() {
+  return ENV_REL;
+}
+
+function ensureGitignore(root) {
+  const gi = path.join(root, ".gitignore");
+  const block = "# WhatsApp keys - never commit\n.env\n";
+  if (!fs.existsSync(gi)) {
+    fs.writeFileSync(gi, block);
+    return;
+  }
+  const text = fs.readFileSync(gi, "utf8");
+  if (/(^|[\r\n])\s*\.env\s*($|[\r\n])/.test(text)) return;
+  const suffix = text.endsWith("\n") ? "" : "\n";
+  fs.appendFileSync(gi, suffix + "\n" + block);
+}
 
 // Fresh .env template (Hebrew guidance baked in so beginners see what to do when the file opens).
 const ENV_TEMPLATE = `# ================= WhatsApp - Green API =================
-# זהו המסמך שבו מדביקים את המפתחות (לא צריך להדביק אותם בצ'אט).
-# מדביקים כאן את הערכים מהקונסולה של Green API, שומרים את הקובץ,
+# הקובץ הזה (.env) נמצא בשורש הפרויקט הנוכחי. לא מדביקים מפתחות בצ'אט.
+# הוא ברשימת .gitignore - לא עולה ל-GitHub.
+# מדביקים כאן את הערכים מהקונסולה של Green API, שומרים,
 # וחוזרים ל-Codex וכותבים "סיימתי".
 #   שמירה: מק Cmd+S  |  ווינדוס Ctrl+S
 # את הערכים לוקחים ממסך ה-Instance בקונסולה: apiUrl, idInstance, apiTokenInstance.
@@ -70,36 +121,49 @@ function openInEditor(file) {
   }
 }
 
-// One-time migration: if the old script-local .env exists (from before the
-// global-path fix) and the new global one does not yet, carry it over so an
-// already-configured user is never asked to re-enter their keys.
-function migrateLegacyEnv() {
-  fs.mkdirSync(GLOBAL_DIR, { recursive: true });
-  if (!fs.existsSync(ENV_PATH) && fs.existsSync(LEGACY_ENV_PATH)) {
-    fs.copyFileSync(LEGACY_ENV_PATH, ENV_PATH);
+// If the project has no .env yet, copy a readable leftover from an older location.
+// Read-only: never write outside the project.
+function copyLegacyIfPresent(dest) {
+  if (fs.existsSync(dest)) return false;
+  const leftovers = [
+    path.join(HERE, ".env"),
+    path.join(os.homedir(), ".atomi-whatsapp", ".env"),
+  ];
+  for (const src of leftovers) {
+    try {
+      if (!fs.existsSync(src)) continue;
+      fs.copyFileSync(src, dest);
+      return true;
+    } catch {
+      // no write/read permission outside the project is expected - skip
+    }
   }
+  return false;
 }
 
-// Create the global .env from the template if it does not exist yet (after migration).
-// Returns true if it was just created fresh (i.e. no prior config to migrate).
+// Create ./.env in the current project if it does not exist yet.
+// Returns true if it was just created fresh.
 function ensureEnvFile() {
-  migrateLegacyEnv();
-  if (fs.existsSync(ENV_PATH)) return false;
-  fs.writeFileSync(ENV_PATH, ENV_TEMPLATE);
+  const root = projectRoot();
+  const dest = envPath();
+  ensureGitignore(root);
+  if (copyLegacyIfPresent(dest)) return false;
+  if (fs.existsSync(dest)) return false;
+  fs.writeFileSync(dest, ENV_TEMPLATE);
   return true;
 }
 
-// Write the credentials to the global .env (with a friendly header). Token is masked in output.
-// phone (the user's own WhatsApp number) is optional and saved as MY_PHONE for "send to myself".
+// Write the credentials to ./.env (with a friendly header). Token is masked in output.
 function writeEnv({ url, instance, token, phone }) {
-  fs.mkdirSync(GLOBAL_DIR, { recursive: true });
+  const root = projectRoot();
+  ensureGitignore(root);
   let body = `# WhatsApp - Green API (נכתב אוטומטית, אפשר לערוך ידנית)
 GREEN_API_URL=${url}
 GREEN_API_INSTANCE=${instance}
 GREEN_API_TOKEN=${token}
 `;
   if (phone) body += `MY_PHONE=${phone}\n`;
-  fs.writeFileSync(ENV_PATH, body);
+  fs.writeFileSync(envPath(), body);
 }
 
 // Parse a Green API example-request URL into its three parts.
@@ -140,7 +204,7 @@ function runSet() {
   const phoneArg = arg("--phone");
   if (phoneArg) vals.phone = normalize(phoneArg).replace("@c.us", "");
   writeEnv(vals);
-  console.log("נשמרו המפתחות ב-" + ENV_PATH + ":");
+  console.log("נשמרו המפתחות ב-" + envRel() + ":");
   console.log("  URL      = " + vals.url);
   console.log("  INSTANCE = " + vals.instance);
   console.log("  TOKEN    = " + mask(vals.token));
@@ -151,9 +215,9 @@ function runSet() {
 // First-run setup: make sure the .env exists, open it for editing, print guidance.
 function runSetup() {
   const created = ensureEnvFile();
-  const opened = openInEditor(ENV_PATH);
+  const opened = openInEditor(envPath());
   console.log(created ? "נוצר מסמך המפתחות. פתחו אותו:" : "מסמך המפתחות כבר קיים. פתחו אותו:");
-  console.log("  " + ENV_PATH);
+  console.log("  " + envRel());
   if (opened) {
     console.log("(פתחתי אותו בשבילכם בעורך.)");
   }
@@ -162,13 +226,13 @@ function runSetup() {
   console.log('חשוב: כדי שקריאת הודעות נכנסות תעבוד, יש להדליק בקונסולה של Green API, בקטע "וובהוק", את ההתראה על הודעות נכנסות (וגם על הודעות שנשלחו מהפלאפון). בלי זה אין מה לקרוא.');
 }
 
-// Read env vars from process.env + the global .env file (file values only fill gaps).
-// Pure read, no side effects — safe to call from `check` without opening/creating anything.
+// Read env vars from process.env + the project ./.env (file values only fill gaps).
+// Pure read, no side effects - safe to call from `check` without opening/creating anything.
 function readEnv() {
   const env = { ...process.env };
-  migrateLegacyEnv();
-  if (fs.existsSync(ENV_PATH)) {
-    for (const line of fs.readFileSync(ENV_PATH, "utf8").split("\n")) {
+  const dest = envPath();
+  if (fs.existsSync(dest)) {
+    for (const line of fs.readFileSync(dest, "utf8").split("\n")) {
       const t = line.trim();
       if (t && !t.startsWith("#") && t.includes("=")) {
         const i = t.indexOf("=");
@@ -247,6 +311,11 @@ const cmd = process.argv[2];
 // guess or explain — it just opens the keys document (creating/migrating it if
 // needed) and exits 2, so the caller's job is simply: tell the user to fill it
 // in, save, say they're done, then run `check` again before retrying the action.
+if (cmd === "where") {
+  console.log("PROJECT=" + projectRoot());
+  console.log("ENV=" + envRel());
+  process.exit(0);
+}
 if (cmd === "check") {
   const { ok, missing } = checkCredentials();
   if (ok) {
@@ -270,7 +339,7 @@ if (cmd === "set") {
 if (cmd === "download") {
   const u = arg("--url");
   if (!u) { console.error("usage: node wa.mjs download --url <downloadUrl> [--out <path>]"); process.exit(1); }
-  const out = arg("--out") || path.join(HERE, "download-" + u.split("/").pop().split("?")[0]);
+  const out = arg("--out") || path.join(projectRoot(), "download-" + u.split("/").pop().split("?")[0]);
   try {
     const p = await downloadUrl(u, out);
     console.log("saved:", p);
@@ -281,8 +350,9 @@ if (cmd === "download") {
 // Only send/read need credentials. Anything else: show usage without side effects (no .env bootstrap).
 if (cmd !== "send" && cmd !== "read") {
   console.error("usage:");
-  console.error("  node wa.mjs check                       # credentials present? OK+exit 0, or opens the doc+exit 2");
-  console.error("  node wa.mjs setup                       # create the global keys file and open it for editing");
+  console.error("  node wa.mjs check                       # credentials present? OK+exit 0, or opens ./.env+exit 2");
+  console.error("  node wa.mjs where                       # print project root + relative .env path");
+  console.error("  node wa.mjs setup                       # create ./.env in this project and open it");
   console.error("  node wa.mjs set --instance <id> --token <token> [--phone <my num>]   # write keys (+own number)");
   console.error("  node wa.mjs send --to <num>|--group <id> \"msg\" [--quote <msgId>]   # send / reply");
   console.error("  node wa.mjs send --self \"msg\"                     # send to yourself (saved number)");

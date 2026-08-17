@@ -1,7 +1,7 @@
 ---
 name: whatsapp
 description: Send and read WhatsApp messages via the Green API. Use when the user wants to send a WhatsApp message, a reminder, a notification, or to read recent incoming WhatsApp messages.
-version: "1.0.1"
+version: "1.1.0"
 author: atomi
 tags: [whatsapp, green-api, messaging]
 allowed-tools: Bash, Read
@@ -17,13 +17,14 @@ Each capability is a single command. No install, no config files to hand-edit.
 
 ```bash
 node scripts/wa.mjs check                                          # credentials present? (call this FIRST, always)
+node scripts/wa.mjs where                                          # print this project's .env path
 node scripts/wa.mjs send --self "..."                              # message yourself
 node scripts/wa.mjs send --to <num> "..."                          # message someone
 node scripts/wa.mjs send --group <id>@g.us "..."                   # message a group
 node scripts/wa.mjs send --to <num> --file <path> --caption "..."  # send image / pdf / audio
 node scripts/wa.mjs send --to <num> --quote <msgId> "..."          # reply to a message
 node scripts/wa.mjs read --count 10 [--json]                       # read recent incoming
-node scripts/wa.mjs download --url "<downloadUrl>" --out <path>    # save incoming media
+node scripts/wa.mjs download --url "<downloadUrl>" --out ./file    # save incoming media in this project
 ```
 
 Details for each are below.
@@ -32,9 +33,14 @@ Details for each are below.
 
 **Node.js 18 or newer** (uses the built-in `fetch`, no packages to install). Check with `node --version`. If missing, install from https://nodejs.org (LTS).
 
-## Credentials are global — one file, every project, every session
+## Credentials are local to THIS project - `.env` at the repo root
 
-The keys live in **one file outside this plugin entirely**: `~/.atomi-whatsapp/.env` in the user's home directory. This is deliberate — Codex re-materializes plugin files into a versioned cache (and a separate ephemeral staging clone) on every install/update, so anything stored next to the script would be wiped on the next sync. Storing it under the home directory instead means it survives plugin updates, and is shared automatically across every Codex project and every session — the user configures it once, ever.
+The keys live in **`.env` at the root of the current project** (the folder the user has open). Every `check` / `send` / `read` looks there again. The script never writes outside the project: many environments have no write permission in the home directory or in the plugin cache.
+
+- Path to tell the user: `.env` (relative). Do not quote a home-directory path.
+- The script adds `.env` to `.gitignore` so the keys never go to GitHub.
+- Each project has its own `.env`. A new folder needs its own keys file.
+- Node.js only. No Python.
 
 ## Before ANY send/read: run `check` first — never guess, never open the document yourself
 
@@ -45,7 +51,7 @@ node scripts/wa.mjs check
 ```
 
 - **Exit 0, prints `OK`:** credentials are present. Proceed straight to `send`/`read` — do not open or read the .env file yourself, do not ask the user anything.
-- **Exit non-zero:** credentials are missing. The script *itself* already created (or migrated) the keys document and opened it in the user's editor — you do not need to open, read, or explain the file's contents. Just tell the user: the keys document opened, paste `idInstance` / `apiTokenInstance` / their own WhatsApp number from the Green API console (console.green-api.com → their instance) into the matching fields, save (Cmd+S / Ctrl+S), and say "סיימתי". **Then run `check` again** before retrying the action — do not call `send`/`read` directly.
+- **Exit non-zero:** credentials are missing. The script *itself* already created `.env` in this project (and added it to `.gitignore`) and opened it in the user's editor. Just tell the user: the file `.env` opened in the project folder, paste `idInstance` / `apiTokenInstance` / their own WhatsApp number from the Green API console (console.green-api.com → their instance) into the matching fields, save (Cmd+S / Ctrl+S), and say "סיימתי". **Then run `check` again** before retrying the action — do not call `send`/`read` directly.
 
 **Never ask the user to paste the token into the chat** — it is a secret and must not sit in the conversation; the document flow above is the only path.
 
@@ -84,14 +90,14 @@ node scripts/wa.mjs send --group 1203630000000000@g.us "הודעה לקבוצה"
 node scripts/wa.mjs send --self "ההודעה כאן"
 ```
 
-`--self` uses `MY_PHONE` from the global keys file (set during setup). If it isn't saved yet, ask the user for their number and re-run `set … --phone <number>`.
+`--self` uses `MY_PHONE` from this project's `.env` (set during setup). If it isn't saved yet, ask the user for their number and re-run `set … --phone <number>`.
 
 The Green API instance *is* the user's own WhatsApp account (they authorized it by scanning the QR with their personal phone), so every message goes out **as them**. Sending to their own number therefore lands in their own "הודעה לעצמי" (note-to-self) chat, shown as sent by them — WhatsApp marks it with a single tick (`sent`) since sender and recipient are the same account.
 
 ## Send a file (image / PDF / audio / recording / document)
 
 ```bash
-node scripts/wa.mjs send --to 972501234567 --file /tmp/invoice.pdf --caption "החשבונית שלך"
+node scripts/wa.mjs send --to 972501234567 --file ./invoice.pdf --caption "החשבונית שלך"
 ```
 
 Works with `--group` and `--self` too. Any file type via Green API `sendFileByUpload`: images arrive as images, audio (e.g. a recording `.mp3`/`.ogg`) as playable audio, PDF and others as documents.
@@ -119,10 +125,10 @@ Each line shows the message id.
 - **Images / PDF / audio / video:** the line shows `downloadUrl=<url>` plus type and caption. To actually *see* an incoming image or read a document, download it and open the local file:
 
   ```bash
-  node scripts/wa.mjs download --url "<the downloadUrl>" --out /tmp/incoming.jpg
+  node scripts/wa.mjs download --url "<the downloadUrl>" --out ./incoming.jpg
   ```
 
-  Then read `/tmp/incoming.jpg` — you (the model) can view the image directly. Same for PDFs/audio.
+  Then read `./incoming.jpg` - you (the model) can view the image directly. Same for PDFs/audio. Download into the project, not into `/tmp` or the home directory.
 - **Quote-replies:** if a message is a reply, the line also shows the quoted message id (`stanzaId`) and the quoted text, so you have the full context of what it replied to:
 
   ```
