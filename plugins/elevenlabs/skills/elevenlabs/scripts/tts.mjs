@@ -62,11 +62,14 @@ function ensureGitignore(root) {
   fs.appendFileSync(gi, suffix + "\n" + block);
 }
 
+const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // ElevenLabs premade "Rachel"
+
 const ELEVEN_BLOCK = `# ================= ElevenLabs =================
 # מפתח מ-https://elevenlabs.io/app/settings/api-keys
-# Voice ID מ-https://elevenlabs.io/app/voice-lab (או voices אחרי שהמפתח שמור)
 ELEVENLABS_API_KEY=your_elevenlabs_key
-ELEVENLABS_VOICE_ID=xxxxxxxxxxxxxxxxxxxxxxxx
+# רשות. Voice ID מ-https://elevenlabs.io/app/voice-lab
+# אם ריק - ניקח קול ברירת מחדל מהחשבון, או Rachel.
+ELEVENLABS_VOICE_ID=
 `;
 
 const ENV_TEMPLATE = `# הקובץ הזה (.env) נמצא בשורש הפרויקט הנוכחי. לא מדביקים מפתחות בצ'אט.
@@ -115,6 +118,9 @@ function ensureEnvFile() {
   if (!/^\s*ELEVENLABS_API_KEY\s*=/m.test(current)) {
     const suffix = current.endsWith("\n") ? "" : "\n";
     fs.appendFileSync(dest, suffix + "\n" + ELEVEN_BLOCK);
+  } else if (!/^\s*ELEVENLABS_VOICE_ID\s*=/m.test(current)) {
+    const suffix = current.endsWith("\n") ? "" : "\n";
+    fs.appendFileSync(dest, suffix + "ELEVENLABS_VOICE_ID=\n");
   }
   return false;
 }
@@ -182,15 +188,44 @@ async function listVoices(env) {
   }
 }
 
-async function speak(env, text, outPath, voiceId) {
-  const voice = voiceId || env.ELEVENLABS_VOICE_ID;
-  if (isPlaceholder(voice)) {
-    console.error("חסר ELEVENLABS_VOICE_ID. הריצו: node tts.mjs voices  ואז הדביקו מזהה לקובץ .env");
-    process.exit(1);
+async function resolveVoice(env, override) {
+  if (!isPlaceholder(override)) return { id: override, source: "flag" };
+  if (!isPlaceholder(env.ELEVENLABS_VOICE_ID)) {
+    return { id: env.ELEVENLABS_VOICE_ID, source: ".env" };
   }
+  try {
+    const res = await fetch("https://api.elevenlabs.io/v1/voices", {
+      headers: { "xi-api-key": env.ELEVENLABS_API_KEY },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const voices = data.voices || [];
+      const preferred =
+        voices.find((v) => /rachel/i.test(v.name || "")) ||
+        voices.find((v) => v.category === "premade") ||
+        voices[0];
+      if (preferred?.voice_id) {
+        return { id: preferred.voice_id, name: preferred.name, source: "account-default" };
+      }
+    }
+  } catch {
+    // fall through to public default
+  }
+  return { id: DEFAULT_VOICE_ID, name: "Rachel", source: "built-in-default" };
+}
+
+async function speak(env, text, outPath, voiceId) {
+  const voice = await resolveVoice(env, voiceId);
+  console.log(
+    "voice=" +
+      (voice.name ? voice.name + " " : "") +
+      voice.id +
+      " source=" +
+      voice.source
+  );
   const url =
     "https://api.elevenlabs.io/v1/text-to-speech/" +
-    encodeURIComponent(voice) +
+    encodeURIComponent(voice.id) +
     "?output_format=mp3_44100_128";
   const res = await fetch(url, {
     method: "POST",

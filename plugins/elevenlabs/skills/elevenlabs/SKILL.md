@@ -20,7 +20,7 @@ Keys live in **`.env` at the root of the current project**. This plugin never wr
 - If WhatsApp already created `.env`, this plugin **appends** the ElevenLabs fields. One file, one project.
 
 Required: `ELEVENLABS_API_KEY` from https://elevenlabs.io/app/settings/api-keys
-Optional: `ELEVENLABS_VOICE_ID` from https://elevenlabs.io/app/voice-lab
+Optional: `ELEVENLABS_VOICE_ID` from https://elevenlabs.io/app/voice-lab. If empty, the script picks a default voice from the account (or Rachel).
 
 Never ask the user to paste the key into the chat.
 

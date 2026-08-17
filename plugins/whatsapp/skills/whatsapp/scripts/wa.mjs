@@ -98,7 +98,8 @@ MY_PHONE=9725xxxxxxxx
 # ================= ElevenLabs (רשות, אותו קובץ) =================
 # מפתח מ-https://elevenlabs.io/app/settings/api-keys
 ELEVENLABS_API_KEY=your_elevenlabs_key
-ELEVENLABS_VOICE_ID=xxxxxxxxxxxxxxxxxxxxxxxx
+# רשות. אם ריק - קול ברירת מחדל מהחשבון / Rachel.
+ELEVENLABS_VOICE_ID=
 `;
 
 // A value that is empty or still a placeholder means "not configured yet".
