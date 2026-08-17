@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const REQUIRED = ["GREEN_API_URL", "GREEN_API_INSTANCE", "GREEN_API_TOKEN"];
+const REQUIRED = ["GREEN_API_URL", "GREEN_API_INSTANCE", "GREEN_API_TOKEN", "MY_PHONE"];
 const ENV_REL = ".env";
 
 function isPluginCache(p) {
@@ -154,9 +154,29 @@ function ensureEnvFile() {
   const dest = envPath();
   ensureGitignore(root);
   if (copyLegacyIfPresent(dest)) return false;
-  if (fs.existsSync(dest)) return false;
+  if (fs.existsSync(dest)) {
+    const current = fs.readFileSync(dest, "utf8");
+    if (!/^\s*MY_PHONE\s*=/m.test(current)) {
+      const suffix = current.endsWith("\n") ? "" : "\n";
+      fs.appendFileSync(dest, suffix + "MY_PHONE=9725xxxxxxxx\n");
+    }
+    return false;
+  }
   fs.writeFileSync(dest, ENV_TEMPLATE);
   return true;
+}
+
+function upsertEnvKey(key, value) {
+  const dest = envPath();
+  ensureGitignore(projectRoot());
+  const current = fs.existsSync(dest) ? fs.readFileSync(dest, "utf8") : "";
+  const line = key + "=" + value;
+  if (new RegExp("^\\s*" + key + "\\s*=", "m").test(current)) {
+    fs.writeFileSync(dest, current.replace(new RegExp("^\\s*" + key + "\\s*=.*$", "m"), line));
+  } else {
+    const suffix = !current || current.endsWith("\n") ? "" : "\n";
+    fs.writeFileSync(dest, current + suffix + line + "\n");
+  }
 }
 
 // Write the credentials to ./.env (with a friendly header). Token is masked in output.
@@ -185,6 +205,13 @@ const mask = (t) => (t && t.length > 6 ? t.slice(0, 3) + "***" + t.slice(-3) : "
 // One-paste setup: derive all three keys from a single Green API example URL, or take them explicitly.
 // --phone <the user's own WhatsApp number> is optional and saved for "send to myself".
 function runSet() {
+  const phoneOnly = arg("--phone");
+  if (phoneOnly && !arg("--instance") && !arg("--token") && !arg("--from-url")) {
+    const phone = normalize(phoneOnly).replace("@c.us", "");
+    upsertEnvKey("MY_PHONE", phone);
+    console.log("נשמר MY_PHONE ב-" + envRel());
+    return;
+  }
   const fromUrl = arg("--from-url");
   let vals;
   if (fromUrl) {
@@ -393,7 +420,7 @@ if (cmd === "send") {
   const wantsSelf = process.argv.includes("--self") || to === "me" || to === "myself" || to === "self";
   if (wantsSelf) {
     if (isPlaceholder(env.MY_PHONE)) {
-      console.error("לא שמור מספר טלפון שלך. הגדירו אותו: node wa.mjs set --instance <id> --token <token> --phone <המספר שלך>");
+      console.error("לא שמור MY_PHONE ב-.env. פתחו את .env ומלאו את המספר שלכם, או: node wa.mjs set --phone <המספר>");
       process.exit(1);
     }
     to = env.MY_PHONE;
