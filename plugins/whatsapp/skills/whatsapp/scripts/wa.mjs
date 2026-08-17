@@ -288,8 +288,7 @@ function arg(flag) { const i = process.argv.indexOf(flag); return i > -1 ? proce
 // Send a local file (PDF / image / audio / any document) with optional caption, via Green API
 // sendFileByUpload. Images arrive as images, audio as playable audio, PDF/others as documents.
 // quotedMessageId (optional) makes it a reply to a specific message.
-async function sendFile(env, chatId, filePath, caption, quotedMessageId, asVoice) {
-  const method = asVoice ? "sendPTTByUpload" : "sendFileByUpload";
+async function postUpload(env, method, chatId, filePath, caption, quotedMessageId) {
   const url = `${env.GREEN_API_URL}/waInstance${env.GREEN_API_INSTANCE}/${method}/${env.GREEN_API_TOKEN}`;
   const buf = fs.readFileSync(filePath);
   const fd = new FormData();
@@ -298,7 +297,20 @@ async function sendFile(env, chatId, filePath, caption, quotedMessageId, asVoice
   if (quotedMessageId) fd.append("quotedMessageId", quotedMessageId);
   fd.append("file", new Blob([buf]), path.basename(filePath));
   const res = await fetch(url, { method: "POST", body: fd });
-  return res.json();
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { error: "not-json", status: res.status, body: text.slice(0, 200) };
+  }
+}
+
+async function sendFile(env, chatId, filePath, caption, quotedMessageId, asVoice) {
+  if (asVoice) {
+    const ptt = await postUpload(env, "sendPTTByUpload", chatId, filePath, caption, quotedMessageId);
+    if (ptt && ptt.idMessage) return ptt;
+  }
+  return postUpload(env, "sendFileByUpload", chatId, filePath, caption, quotedMessageId);
 }
 
 // Download a media file (e.g. the downloadUrl surfaced by `read`) to a local path. Returns the path.
