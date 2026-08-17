@@ -1,6 +1,6 @@
 {
   "name": "elevenlabs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Generate spoken audio with ElevenLabs TTS. Saves an mp3 in the current project. Keys live in the project's .env. Node.js only.",
   "author": { "name": "עסק אטומי", "url": "https://atomi.biz" },
   "homepage": "https://atomi.biz",

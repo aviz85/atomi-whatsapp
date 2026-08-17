@@ -67,9 +67,8 @@ const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // ElevenLabs premade "Rachel"
 const ELEVEN_BLOCK = `# ================= ElevenLabs =================
 # מפתח מ-https://elevenlabs.io/app/developers/api-keys
 ELEVENLABS_API_KEY=your_elevenlabs_key
-# רשות. בחינם משאירים ריק - נבחר קול קיים מהחשבון.
-# ספרייה: https://elevenlabs.io/app/voices
-# יצירת קול חדש דורשת מנוי.
+# רשות. ריק = קול קיים מהספרייה.
+# https://elevenlabs.io/app/voices
 ELEVENLABS_VOICE_ID=
 `;
 
@@ -215,6 +214,14 @@ async function resolveVoice(env, override) {
   return { id: DEFAULT_VOICE_ID, name: "Rachel", source: "built-in-default" };
 }
 
+const MODELS = ["eleven_v3", "eleven_multilingual_v2"];
+
+function shouldTryNextModel(status, body) {
+  const s = String(body).toLowerCase();
+  if (status === 402) return true;
+  return /model|paid|payment|subscri|plan|upgrade|not_allowed|permission|forbidden|unavailable/.test(s);
+}
+
 async function speak(env, text, outPath, voiceId) {
   const voice = await resolveVoice(env, voiceId);
   console.log(
@@ -228,27 +235,37 @@ async function speak(env, text, outPath, voiceId) {
     "https://api.elevenlabs.io/v1/text-to-speech/" +
     encodeURIComponent(voice.id) +
     "?output_format=mp3_44100_128";
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "xi-api-key": env.ELEVENLABS_API_KEY,
-      "Content-Type": "application/json",
-      Accept: "audio/mpeg",
-    },
-    body: JSON.stringify({
-      text,
-      model_id: "eleven_v3",
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    console.error("speak failed: HTTP " + res.status + " " + err.slice(0, 300));
-    process.exit(1);
+  let last = "";
+  for (const model of MODELS) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "xi-api-key": env.ELEVENLABS_API_KEY,
+        "Content-Type": "application/json",
+        Accept: "audio/mpeg",
+      },
+      body: JSON.stringify({
+        text,
+        model_id: model,
+      }),
+    });
+    if (res.ok) {
+      const buf = Buffer.from(await res.arrayBuffer());
+      fs.writeFileSync(outPath, buf);
+      const rel = path.relative(projectRoot(), outPath) || path.basename(outPath);
+      console.log("model=" + model);
+      console.log("saved: " + (rel.startsWith("..") ? outPath : "./" + rel.replace(/\\/g, "/")));
+      return;
+    }
+    last = await res.text();
+    if (!shouldTryNextModel(res.status, last) || model === MODELS[MODELS.length - 1]) {
+      console.error("speak failed: HTTP " + res.status + " " + last.slice(0, 300));
+      process.exit(1);
+    }
+    console.log("model=" + model + " skipped, trying next");
   }
-  const buf = Buffer.from(await res.arrayBuffer());
-  fs.writeFileSync(outPath, buf);
-  const rel = path.relative(projectRoot(), outPath) || path.basename(outPath);
-  console.log("saved: " + (rel.startsWith("..") ? outPath : "./" + rel.replace(/\\/g, "/")));
+  console.error("speak failed: " + last.slice(0, 300));
+  process.exit(1);
 }
 
 const cmd = process.argv[2];

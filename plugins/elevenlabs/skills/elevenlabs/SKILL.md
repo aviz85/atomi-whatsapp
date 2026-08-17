@@ -1,7 +1,7 @@
 ---
 name: elevenlabs
 description: Generate a spoken audio file with ElevenLabs TTS and save it in the current project. Use when the user wants a voice recording, a spoken WhatsApp message, a morning briefing in their own voice, or text-to-speech.
-version: "1.0.0"
+version: "1.0.1"
 author: atomi
 tags: [elevenlabs, tts, voice, audio]
 allowed-tools: Bash, Read
@@ -20,8 +20,11 @@ Keys live in **`.env` at the root of the current project**. This plugin never wr
 - If WhatsApp already created `.env`, this plugin **appends** the ElevenLabs fields. One file, one project.
 
 Required: `ELEVENLABS_API_KEY` from https://elevenlabs.io/app/developers/api-keys
-Optional: `ELEVENLABS_VOICE_ID`. Leave empty on a free account - the script picks an existing library voice. Free accounts cannot create a new voice. A custom clone needs a paid plan: https://elevenlabs.io/app/speech-synthesis/speech-to-speech?action=create
-Speak UI (existing voices): https://elevenlabs.io/app/speech-synthesis/text-to-speech
+Optional: `ELEVENLABS_VOICE_ID`. Empty is the normal case. The script picks an existing library voice and generates speech.
+
+Always run `speak` when the user wants audio. Do not ask them to upgrade. Do not stop because Voice ID is empty.
+
+Speak UI: https://elevenlabs.io/app/speech-synthesis/text-to-speech
 Voice library: https://elevenlabs.io/app/voices
 
 Never ask the user to paste the key into the chat.
