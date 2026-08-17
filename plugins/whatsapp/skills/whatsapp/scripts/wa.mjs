@@ -96,9 +96,9 @@ GREEN_API_TOKEN=your_token_here
 MY_PHONE=9725xxxxxxxx
 
 # ================= ElevenLabs (רשות, אותו קובץ) =================
-# מפתח מ-https://elevenlabs.io/app/settings/api-keys
+# מפתח מ-https://elevenlabs.io/app/developers/api-keys
 ELEVENLABS_API_KEY=your_elevenlabs_key
-# רשות. אם ריק - קול ברירת מחדל מהחשבון / Rachel.
+# רשות. יצירת קול: https://elevenlabs.io/app/speech-synthesis/speech-to-speech?action=create
 ELEVENLABS_VOICE_ID=
 `;
 
@@ -442,7 +442,14 @@ if (cmd === "send") {
 } else if (cmd === "read") {
   const count = parseInt(arg("--count") || "10", 10);
   const group = arg("--group");
-  const chat = arg("--chat");
+  let chat = arg("--chat");
+  if (chat === "me" || chat === "self" || chat === "myself") {
+    if (isPlaceholder(env.MY_PHONE)) {
+      console.error("read --chat me צריך MY_PHONE ב-.env");
+      process.exit(1);
+    }
+    chat = env.MY_PHONE;
+  }
   let r;
   if (group || chat) {
     const chatId = group || normalize(chat);
@@ -450,10 +457,9 @@ if (cmd === "send") {
   } else {
     r = await call(env, "lastIncomingMessages", undefined);
   }
-  const msgs = Array.isArray(r) ? r : [];
+  const msgs = Array.isArray(r) ? r : Array.isArray(r?.messages) ? r.messages : [];
   const slice = msgs.slice(0, count);
-  // Empty queue is often a disabled incoming webhook in Green API, not "no messages". Nudge the user.
-  if (slice.length === 0 && !process.argv.includes("--json")) {
+  if (slice.length === 0 && !process.argv.includes("--json") && !group && !chat) {
     console.error('אין הודעות נכנסות בתור. אם ציפיתם להודעות: בדקו שבקונסולה של Green API, בקטע "וובהוק", ההתראה על הודעות נכנסות דלוקה (בלעדיה Green API לא צובר הודעות נכנסות).');
   }
   // --json: full structured records (quoted bodies, media urls, everything) for the model to reason over.
@@ -476,12 +482,22 @@ if (cmd === "send") {
           txt = "[media]";
         }
       }
-      // If this is a quote-reply, show what it replied to + the quoted message id (stanzaId).
-      if (m.typeMessage === "quotedMessage" || m.quotedMessage) {
-        const stanza = m.extendedTextMessage?.stanzaId || m.quotedMessage?.stanzaId || "?";
-        const quoted = m.quotedMessage?.textMessage || m.quotedMessage?.extendedTextMessage?.text || "";
-        const q = quoted ? ` ⟶ בתגובה ל: "${quoted.slice(0, 200)}"` : "";
-        console.log(`- ${who} [reply id=${m.idMessage} →quoted=${stanza}]: ${txt}${q}`);
+      const stanza =
+        m.extendedTextMessage?.stanzaId ||
+        m.quotedMessage?.stanzaId ||
+        m.quotedMessageId ||
+        "";
+      const quoted =
+        m.quotedMessage?.textMessage ||
+        m.quotedMessage?.extendedTextMessage?.text ||
+        m.extendedTextMessage?.quotedMessage?.textMessage ||
+        "";
+      const isReply = Boolean(
+        m.typeMessage === "quotedMessage" || m.quotedMessage || stanza || quoted
+      );
+      if (isReply) {
+        const q = quoted ? ` ← בתגובה ל: "${quoted.slice(0, 200)}"` : "";
+        console.log(`- ${who} [reply id=${m.idMessage} quoted=${stanza || "?"}]: ${txt}${q}`);
       } else {
         console.log(`- ${who} [id=${m.idMessage}]: ${txt}`);
       }

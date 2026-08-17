@@ -65,10 +65,10 @@ function ensureGitignore(root) {
 const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // ElevenLabs premade "Rachel"
 
 const ELEVEN_BLOCK = `# ================= ElevenLabs =================
-# מפתח מ-https://elevenlabs.io/app/settings/api-keys
+# מפתח מ-https://elevenlabs.io/app/developers/api-keys
 ELEVENLABS_API_KEY=your_elevenlabs_key
-# רשות. Voice ID מ-https://elevenlabs.io/app/voice-lab
-# אם ריק - ניקח קול ברירת מחדל מהחשבון, או Rachel.
+# רשות. יצירת קול: https://elevenlabs.io/app/speech-synthesis/speech-to-speech?action=create
+# אם ריק - ניקח קול ברירת מחדל מהחשבון.
 ELEVENLABS_VOICE_ID=
 `;
 
