@@ -1,0 +1,29 @@
+{
+  "name": "zoom-scheduler",
+  "version": "1.0.0",
+  "description": "Create and manage Zoom meetings from Codex, then coordinate calendar invitations and WhatsApp delivery with explicit approval.",
+  "author": { "name": "עסק אטומי", "url": "https://atomi.biz" },
+  "homepage": "https://atomi.biz/zoom",
+  "license": "MIT",
+  "keywords": ["zoom", "meetings", "scheduling", "calendar", "whatsapp", "oauth2"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Zoom Scheduler",
+    "shortDescription": "יצירה וניהול של פגישות Zoom מתוך Codex",
+    "longDescription": "חיבור Zoom Server-to-Server OAuth דרך מפתחות ב-.env המקומי של הפרויקט. יוצר, קורא, מעדכן ומוחק פגישות; מפיק זימון ICS; ומשתלב עם Google Calendar ו-WhatsApp בתהליך מבוקר.",
+    "developerName": "עסק אטומי",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "websiteURL": "https://atomi.biz/zoom",
+    "composerIcon": "./assets/icon.svg",
+    "logo": "./assets/logo.svg",
+    "screenshots": [],
+    "defaultPrompt": [
+      "חבר לי את Zoom Scheduler",
+      "קבע פגישת Zoom למחר ב-10",
+      "הצג את פגישות ה-Zoom הקרובות",
+      "צור זימון ליומן ושלח את קישור ה-Zoom ב-WhatsApp"
+    ],
+    "brandColor": "#0B5CFF"
+  }
+}

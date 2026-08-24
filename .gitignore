@@ -1,2 +1,8 @@
 **/.env
 .DS_Store
+
+# API keys - never commit
+.env
+
+# Local plugin state and generated files - never commit
+.atomi/

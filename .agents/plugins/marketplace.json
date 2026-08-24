@@ -1,26 +1,56 @@
 {
   "name": "atomi-whatsapp",
   "interface": {
-    "displayName": "עסק אטומי",
-    "shortDescription": "WhatsApp + ElevenLabs + Morning. מפתחות ב-.env של הפרויקט. Node.js בלבד."
+    "displayName": "\u05e2\u05e1\u05e7 \u05d0\u05d8\u05d5\u05de\u05d9",
+    "shortDescription": "WhatsApp + ElevenLabs + Morning + Zoom. \u05de\u05e4\u05ea\u05d7\u05d5\u05ea \u05d1-.env \u05e9\u05dc \u05d4\u05e4\u05e8\u05d5\u05d9\u05e7\u05d8. Node.js \u05d1\u05dc\u05d1\u05d3."
   },
   "plugins": [
     {
       "name": "whatsapp",
-      "source": { "source": "local", "path": "./plugins/whatsapp" },
-      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "source": {
+        "source": "local",
+        "path": "./plugins/whatsapp"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
       "category": "Productivity"
     },
     {
       "name": "elevenlabs",
-      "source": { "source": "local", "path": "./plugins/elevenlabs" },
-      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "source": {
+        "source": "local",
+        "path": "./plugins/elevenlabs"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
       "category": "Productivity"
     },
     {
       "name": "morning",
-      "source": { "source": "local", "path": "./plugins/morning" },
-      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "source": {
+        "source": "local",
+        "path": "./plugins/morning"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "zoom-scheduler",
+      "source": {
+        "source": "local",
+        "path": "./plugins/zoom-scheduler"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
       "category": "Productivity"
     }
   ]
