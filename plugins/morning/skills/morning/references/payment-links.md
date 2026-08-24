@@ -18,18 +18,18 @@ Creating a link requires the account's `plugins` terminal array. Morning exposes
 For a brand-new account, create one payment link manually in Morning first. Then verify discovery:
 
 ```bash
-node scripts/morning.mjs links terminal
+node "<morning-script>" links terminal
 ```
 
 ## Commands
 
 ```bash
-node scripts/morning.mjs links search --status 10
-node scripts/morning.mjs links search --query "סדנה"
-node scripts/morning.mjs links create 500 "קורס מלא" --max-payments 3
-node scripts/morning.mjs links update <link_id> --price 550
-node scripts/morning.mjs links deactivate <link_id>
-node scripts/morning.mjs links duplicate <link_id> --price 600 --description "מחזור חדש"
+node "<morning-script>" links search --status 10
+node "<morning-script>" links search --query "סדנה"
+node "<morning-script>" links create 500 "קורס מלא" --max-payments 3
+node "<morning-script>" links update <link_id> --price 550
+node "<morning-script>" links deactivate <link_id>
+node "<morning-script>" links duplicate <link_id> --price 600 --description "מחזור חדש"
 ```
 
 Changing a live link affects future payers only. Existing transaction history remains in Morning.

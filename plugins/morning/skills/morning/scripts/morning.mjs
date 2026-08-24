@@ -607,7 +607,7 @@ async function invoicePreview(args) {
     payload_hash: hash,
     ttl_minutes: PREVIEW_TTL_MINUTES,
     opened,
-    next_step: `Inspect the PDF and get explicit approval. Then run: node scripts/morning.mjs invoice issue --token ${token} --approved`,
+    next_step: `Inspect the PDF and get explicit approval. Then run: node ${JSON.stringify(path.resolve(process.argv[1]))} invoice issue --token ${token} --approved`,
   });
 }
 

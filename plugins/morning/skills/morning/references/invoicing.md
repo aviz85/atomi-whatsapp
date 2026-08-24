@@ -5,9 +5,9 @@
 An invoice or receipt is a real legal document. Use only:
 
 ```bash
-node scripts/morning.mjs invoice preview --payload ./invoice-payload.json
+node "<morning-script>" invoice preview --payload ./invoice-payload.json
 # inspect the rendered PDF and receive explicit approval
-node scripts/morning.mjs invoice issue --token <token> --approved
+node "<morning-script>" invoice issue --token <token> --approved
 ```
 
 Never call `POST /documents` with `curl`, an inline script, or any path outside the locked command. A preview is not approval.

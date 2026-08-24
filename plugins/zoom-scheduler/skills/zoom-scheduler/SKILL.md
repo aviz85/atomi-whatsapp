@@ -8,6 +8,8 @@ allowed-tools: Bash, Read
 
 Use Zoom's REST API from the current project. Node.js 18+ only; there are no packages to install and no MCP server.
 
+Run the bundled helper directly from this skill. Its exact location is `scripts/zoom.mjs` inside the same directory as this `SKILL.md`. For example, if this file is `/A/skills/zoom-scheduler/SKILL.md`, run `/A/skills/zoom-scheduler/scripts/zoom.mjs` — never `/A/scripts/zoom.mjs`. Invoke the resolved absolute path while keeping the project root as the working directory, and do not copy the helper into the project. In the examples below, replace `<zoom-script>` with that exact path.
+
 This skill complements Zoom's official Codex connector. Use the official connector for searching meeting content, summaries, transcripts, and recordings when available. Use this skill for creating and managing meetings through the user's own Zoom account.
 
 ## Credentials — same rule as WhatsApp
@@ -27,7 +29,7 @@ For Server-to-Server OAuth, `ZOOM_USER_ID` must be the meeting host's Zoom email
 Start every first use with:
 
 ```bash
-node scripts/zoom.mjs check
+node "<zoom-script>" check
 ```
 
 - Exit `0`: credentials passed a live, read-only OAuth/API check.
@@ -36,21 +38,21 @@ node scripts/zoom.mjs check
 
 ### Setup completion handshake
 
-When the user says `סיימתי` after filling the file, immediately run `node scripts/zoom.mjs check` again. The command rereads `.env`; do not repeat setup and do not ask for credentials in chat.
+When the user says `סיימתי` after filling the file, immediately run `node "<zoom-script>" check` again. The command rereads `.env`; do not repeat setup and do not ask for credentials in chat.
 
-Only announce that Zoom is connected and continue to meeting operations when the fresh result contains both `ready: true` and `configuration_updated: true`. A successful check updates the secret-free project state at `.atomi/connections/zoom-scheduler.json`, so a later chat can inspect it with `node scripts/zoom.mjs status`. If the live check fails, report the error and keep the connection unready.
+Only announce that Zoom is connected and continue to meeting operations when the fresh result contains both `ready: true` and `configuration_updated: true`. A successful check updates the secret-free project state at `.atomi/connections/zoom-scheduler.json`, so a later chat can inspect it with `node "<zoom-script>" status`. If the live check fails, report the error and keep the connection unready.
 
 Read [references/setup.md](references/setup.md) before guiding a first-time Zoom setup. Scopes must match the actions requested.
 
 ## Read operations
 
 ```bash
-node scripts/zoom.mjs me
-node scripts/zoom.mjs meetings list --type upcoming
-node scripts/zoom.mjs meetings get <meeting_id>
-node scripts/zoom.mjs participants <meeting_id>
-node scripts/zoom.mjs recordings <meeting_id>
-node scripts/zoom.mjs invitation <meeting_id>
+node "<zoom-script>" me
+node "<zoom-script>" meetings list --type upcoming
+node "<zoom-script>" meetings get <meeting_id>
+node "<zoom-script>" participants <meeting_id>
+node "<zoom-script>" recordings <meeting_id>
+node "<zoom-script>" invitation <meeting_id>
 ```
 
 ## Controlled write operations
@@ -67,13 +69,13 @@ Resolve relative time from the current date. If a date, timezone, email, or reci
 Create a preview without touching Zoom:
 
 ```bash
-node scripts/zoom.mjs meetings create --topic "פגישה עם דנה" --start "2026-08-25T10:00:00" --duration 60 --timezone "Asia/Jerusalem" --invitee "dana@example.com" --dry-run
+node "<zoom-script>" meetings create --topic "פגישה עם דנה" --start "2026-08-25T10:00:00" --duration 60 --timezone "Asia/Jerusalem" --invitee "dana@example.com" --dry-run
 ```
 
 After approval, run the same command with `--approved` instead of `--dry-run`:
 
 ```bash
-node scripts/zoom.mjs meetings create --topic "פגישה עם דנה" --start "2026-08-25T10:00:00" --duration 60 --timezone "Asia/Jerusalem" --invitee "dana@example.com" --approved
+node "<zoom-script>" meetings create --topic "פגישה עם דנה" --start "2026-08-25T10:00:00" --duration 60 --timezone "Asia/Jerusalem" --invitee "dana@example.com" --approved
 ```
 
 The output is sanitized: it returns `join_url` but never prints or saves Zoom's privileged `start_url`.
@@ -81,8 +83,8 @@ The output is sanitized: it returns `join_url` but never prints or saves Zoom's 
 Update and delete also require approval:
 
 ```bash
-node scripts/zoom.mjs meetings update <meeting_id> --topic "כותרת חדשה" --start "2026-08-25T11:00:00" --timezone "Asia/Jerusalem" --approved
-node scripts/zoom.mjs meetings delete <meeting_id> --approved
+node "<zoom-script>" meetings update <meeting_id> --topic "כותרת חדשה" --start "2026-08-25T11:00:00" --timezone "Asia/Jerusalem" --approved
+node "<zoom-script>" meetings delete <meeting_id> --approved
 ```
 
 ## Complete Zoom → Calendar → WhatsApp workflow
@@ -98,7 +100,7 @@ For a request such as “ניפגש מחר ב-10”:
 7. If Google Calendar is unavailable, generate an `.ics` file inside the project. Explain that creating an ICS file does not email it automatically:
 
 ```bash
-node scripts/zoom.mjs ics --topic "פגישה עם דנה" --start "2026-08-25T10:00:00" --duration 60 --timezone "Asia/Jerusalem" --url "https://zoom.us/j/..." --attendee "dana@example.com" --out "./meeting.ics"
+node "<zoom-script>" ics --topic "פגישה עם דנה" --start "2026-08-25T10:00:00" --duration 60 --timezone "Asia/Jerusalem" --url "https://zoom.us/j/..." --attendee "dana@example.com" --out "./meeting.ics"
 ```
 
 8. Use `$whatsapp` to show the exact message and destination, obtain/send under the WhatsApp skill's approval rules, and include the Zoom join link.

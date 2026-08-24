@@ -8,6 +8,8 @@ allowed-tools: Bash, Read
 
 Use the Morning API from the current project. Node.js 18+ only; there are no packages to install and no MCP server.
 
+Run the bundled helper directly from this skill. Its exact location is `scripts/morning.mjs` inside the same directory as this `SKILL.md`. For example, if this file is `/A/skills/morning/SKILL.md`, run `/A/skills/morning/scripts/morning.mjs` — never `/A/scripts/morning.mjs`. Invoke the resolved absolute path while keeping the project root as the working directory, and do not copy the helper into the project. In the examples below, replace `<morning-script>` with that exact path.
+
 ## Credentials — same rule as WhatsApp
 
 Credentials live in **`.env` at the root of the current project**. This plugin never asks for secrets in chat and never writes credentials into the plugin cache or the home directory.
@@ -24,7 +26,7 @@ Get both values from Morning → Settings → Developer Tools → API Keys. The 
 Always begin with:
 
 ```bash
-node scripts/morning.mjs check
+node "<morning-script>" check
 ```
 
 - Exit `0` means the keys passed a live, read-only OAuth check.
@@ -33,20 +35,20 @@ node scripts/morning.mjs check
 
 ### Setup completion handshake
 
-When the user says `סיימתי` after filling the file, immediately run `node scripts/morning.mjs check` again. The command rereads `.env`; do not repeat setup and do not ask for the credentials in chat.
+When the user says `סיימתי` after filling the file, immediately run `node "<morning-script>" check` again. The command rereads `.env`; do not repeat setup and do not ask for the credentials in chat.
 
-Only announce that Morning is connected and continue to Morning work when the fresh result contains both `ready: true` and `configuration_updated: true`. A successful check updates the secret-free project state at `.atomi/connections/morning.json`, so a later chat can inspect it with `node scripts/morning.mjs status`. If the live check fails, report the error and keep the connection unready.
+Only announce that Morning is connected and continue to Morning work when the fresh result contains both `ready: true` and `configuration_updated: true`. A successful check updates the secret-free project state at `.atomi/connections/morning.json`, so a later chat can inspect it with `node "<morning-script>" status`. If the live check fails, report the error and keep the connection unready.
 
 ## Safe read commands
 
 ```bash
-node scripts/morning.mjs me
-node scripts/morning.mjs clients search --query "שם לקוח"
-node scripts/morning.mjs income --from 2026-08-01 --to 2026-08-31
-node scripts/morning.mjs expenses --from 2026-08-01 --to 2026-08-31
-node scripts/morning.mjs links search --status 10
-node scripts/morning.mjs links get <link_id>
-node scripts/morning.mjs links terminal
+node "<morning-script>" me
+node "<morning-script>" clients search --query "שם לקוח"
+node "<morning-script>" income --from 2026-08-01 --to 2026-08-31
+node "<morning-script>" expenses --from 2026-08-01 --to 2026-08-31
+node "<morning-script>" links search --status 10
+node "<morning-script>" links get <link_id>
+node "<morning-script>" links terminal
 ```
 
 Read [references/api.md](references/api.md) for endpoints and current auth details.
@@ -56,10 +58,10 @@ Read [references/api.md](references/api.md) for endpoints and current auth detai
 Payment links can be created, updated, deactivated, and duplicated. These calls change Morning, so show the intended values before running them. They do not send anything to a customer or issue an accounting document.
 
 ```bash
-node scripts/morning.mjs links create 500 "קורס מלא" --max-payments 3
-node scripts/morning.mjs links update <link_id> --price 550 --description "קורס מלא"
-node scripts/morning.mjs links deactivate <link_id>
-node scripts/morning.mjs links duplicate <link_id> --price 600 --description "מחזור חדש"
+node "<morning-script>" links create 500 "קורס מלא" --max-payments 3
+node "<morning-script>" links update <link_id> --price 550 --description "קורס מלא"
+node "<morning-script>" links deactivate <link_id>
+node "<morning-script>" links duplicate <link_id> --price 600 --description "מחזור חדש"
 ```
 
 Read [references/payment-links.md](references/payment-links.md) before creating the first link.
@@ -72,14 +74,14 @@ Issuing an invoice or receipt creates a real legal document. Never call Morning'
 2. Preview it:
 
 ```bash
-node scripts/morning.mjs invoice preview --payload ./invoice-payload.json
+node "<morning-script>" invoice preview --payload ./invoice-payload.json
 ```
 
 3. Open and inspect the rendered PDF. Verify total, VAT, payment method, client name and tax ID, line descriptions, and date. Show it to the account owner and wait for explicit approval.
 4. Only after explicit approval in the current conversation:
 
 ```bash
-node scripts/morning.mjs invoice issue --token <token> --approved
+node "<morning-script>" invoice issue --token <token> --approved
 ```
 
 The token is one-time, tied to the exact previewed payload hash, and expires after 30 minutes. Pending, issued, failed, preview, and append-only audit files live under the gitignored project path `.atomi/morning-state/`, so plugin updates cannot erase them and sandboxed sessions do not need home-directory access.
