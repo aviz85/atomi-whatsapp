@@ -10,6 +10,7 @@ const OAUTH_URL = "https://api.morning.co/idp/v1/oauth/token";
 const API_BASE = "https://api.greeninvoice.co.il/api/v1";
 const ENV_REL = ".env";
 const STATE_REL = path.join(".atomi", "morning-state");
+const CONNECTION_REL = path.join(".atomi", "connections", "morning.json");
 const PREVIEW_TTL_MINUTES = 30;
 const REQUIRED = ["MORNING_API_KEY", "MORNING_API_SECRET"];
 
@@ -61,6 +62,46 @@ function ensureGitignore() {
   const root = projectRoot();
   ensureIgnored(root, ".env", "API keys - never commit");
   ensureIgnored(root, ".atomi/", "Local Morning state and financial previews - never commit");
+}
+
+function connectionPath() {
+  return path.join(projectRoot(), CONNECTION_REL);
+}
+
+function envRevision() {
+  try {
+    const stat = fs.statSync(envPath());
+    return `${stat.size}:${Math.trunc(stat.mtimeMs)}`;
+  } catch {
+    return null;
+  }
+}
+
+function writeConnectionState(state) {
+  ensureGitignore();
+  const file = connectionPath();
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const value = {
+    service: "morning",
+    credentials_file: ENV_REL,
+    env_revision: envRevision(),
+    updated_at: new Date().toISOString(),
+    ...state,
+  };
+  const temporary = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
+  fs.renameSync(temporary, file);
+  return CONNECTION_REL;
+}
+
+function readConnectionState() {
+  const file = connectionPath();
+  if (!fs.existsSync(file)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
 }
 
 const MORNING_BLOCK = `# ================= Morning (Green Invoice) =================
@@ -165,10 +206,13 @@ function fail(message, code = 1, extra = {}) {
 function runSetup() {
   ensureEnvFile();
   const opened = openFile(envPath(), true);
+  const stateFile = writeConnectionState({ ready: false, reason: "missing_credentials" });
   emit({
     ready: false,
     reason: "missing_credentials",
     credentials_file: ENV_REL,
+    connection_state_file: stateFile,
+    configuration_updated: true,
     opened,
     setup: [
       "Morning -> Settings -> Developer Tools -> API Keys",
@@ -321,16 +365,36 @@ async function runCheck() {
   }
   ensureGitignore();
   if (process.env.MORNING_SKIP_NETWORK === "1") {
-    emit({ ready: true, credentials_file: ENV_REL, auth: "local-check-only" });
+    const stateFile = writeConnectionState({ ready: true, auth: "local-check-only", verified_at: new Date().toISOString() });
+    emit({ ready: true, credentials_file: ENV_REL, auth: "local-check-only", connection_state_file: stateFile, configuration_updated: true });
     return;
   }
   const api = client();
   const me = await api.request("GET", "/businesses/me");
+  const business = me?.name || me?.business?.name || null;
+  const stateFile = writeConnectionState({ ready: true, auth: "oauth2_client_credentials", verified_at: new Date().toISOString(), business });
   emit({
     ready: true,
     credentials_file: ENV_REL,
     auth: "oauth2_client_credentials",
-    business: me?.name || me?.business?.name || null,
+    business,
+    connection_state_file: stateFile,
+    configuration_updated: true,
+  });
+}
+
+function runStatus() {
+  const credentials = credentialStatus();
+  const state = readConnectionState();
+  const currentRevision = envRevision();
+  const envChanged = Boolean(state && state.env_revision !== currentRevision);
+  emit({
+    ready: state?.ready === true && credentials.ok && !envChanged,
+    credentials_present: credentials.ok,
+    env_changed_since_check: envChanged,
+    credentials_file: ENV_REL,
+    connection_state_file: CONNECTION_REL,
+    state,
   });
 }
 
@@ -628,7 +692,7 @@ async function runInvoice(args) {
 
 function usage() {
   console.log(`Morning commands:
-  check | setup | where | me
+  check | status | setup | where | me
   clients search --query <name>
   income --from YYYY-MM-DD --to YYYY-MM-DD
   expenses --from YYYY-MM-DD --to YYYY-MM-DD
@@ -651,6 +715,7 @@ async function main() {
     return;
   }
   if (command === "check") return runCheck();
+  if (command === "status") return runStatus();
   if (command === "me") return emit(await client().request("GET", "/businesses/me"));
   if (command === "clients") return runClients(args);
   if (command === "income" || command === "expenses") {
@@ -665,6 +730,7 @@ async function main() {
 }
 
 main().catch((error) => {
+  if (process.argv[2] === "check") writeConnectionState({ ready: false, reason: "connection_check_failed" });
   const detail = String(error?.message || error).slice(0, 700);
   fail(detail, error?.status === 401 || error?.status === 403 ? 2 : 1);
 });

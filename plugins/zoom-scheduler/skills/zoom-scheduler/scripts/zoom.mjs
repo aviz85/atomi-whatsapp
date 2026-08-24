@@ -9,6 +9,7 @@ import { spawn } from "node:child_process";
 const TOKEN_URL = "https://zoom.us/oauth/token";
 const API_BASE = "https://api.zoom.us/v2";
 const ENV_REL = ".env";
+const CONNECTION_REL = path.join(".atomi", "connections", "zoom-scheduler.json");
 const REQUIRED = ["ZOOM_ACCOUNT_ID", "ZOOM_CLIENT_ID", "ZOOM_CLIENT_SECRET", "ZOOM_USER_ID"];
 
 function isPluginCache(value) {
@@ -55,6 +56,46 @@ function ensureGitignore() {
   const root = projectRoot();
   ensureIgnored(root, ".env", "API keys - never commit");
   ensureIgnored(root, ".atomi/", "Local plugin state and generated files - never commit");
+}
+
+function connectionPath() {
+  return path.join(projectRoot(), CONNECTION_REL);
+}
+
+function envRevision() {
+  try {
+    const stat = fs.statSync(envPath());
+    return `${stat.size}:${Math.trunc(stat.mtimeMs)}`;
+  } catch {
+    return null;
+  }
+}
+
+function writeConnectionState(state) {
+  ensureGitignore();
+  const file = connectionPath();
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const value = {
+    service: "zoom-scheduler",
+    credentials_file: ENV_REL,
+    env_revision: envRevision(),
+    updated_at: new Date().toISOString(),
+    ...state,
+  };
+  const temporary = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
+  fs.renameSync(temporary, file);
+  return CONNECTION_REL;
+}
+
+function readConnectionState() {
+  const file = connectionPath();
+  if (!fs.existsSync(file)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
 }
 
 const ZOOM_BLOCK = `# ================= Zoom Scheduler =================
@@ -141,10 +182,13 @@ function fail(message, code = 1, extra = {}) {
 
 function runSetup() {
   ensureEnvFile();
+  const stateFile = writeConnectionState({ ready: false, reason: "missing_credentials" });
   emit({
     ready: false,
     reason: "missing_credentials",
     credentials_file: ENV_REL,
+    connection_state_file: stateFile,
+    configuration_updated: true,
     opened: openFile(envPath()),
     setup: [
       "Zoom Marketplace -> Developer -> Created apps -> Server-to-Server OAuth",
@@ -336,12 +380,31 @@ function requireApproval(args, action) {
 async function runCheck() {
   const values = config();
   if (process.env.ZOOM_SKIP_NETWORK === "1") {
-    emit({ ready: true, credentials_file: ENV_REL, auth: "local-check-only", user_id: values.userId, timezone: values.timezone });
+    const stateFile = writeConnectionState({ ready: true, auth: "local-check-only", verified_at: new Date().toISOString(), user_id: values.userId, timezone: values.timezone });
+    emit({ ready: true, credentials_file: ENV_REL, auth: "local-check-only", user_id: values.userId, timezone: values.timezone, connection_state_file: stateFile, configuration_updated: true });
     return;
   }
   const api = new ZoomClient(values);
   const data = await api.request("GET", `/users/${userPart(values.userId)}/meetings?type=scheduled&page_size=1`);
-  emit({ ready: true, credentials_file: ENV_REL, auth: "server_to_server_oauth", user_id: values.userId, timezone: values.timezone, meeting_count: data?.total_records ?? null });
+  const meetingCount = data?.total_records ?? null;
+  const stateFile = writeConnectionState({ ready: true, auth: "server_to_server_oauth", verified_at: new Date().toISOString(), user_id: values.userId, timezone: values.timezone });
+  emit({ ready: true, credentials_file: ENV_REL, auth: "server_to_server_oauth", user_id: values.userId, timezone: values.timezone, meeting_count: meetingCount, connection_state_file: stateFile, configuration_updated: true });
+}
+
+function runStatus() {
+  const env = readEnv();
+  const missing = REQUIRED.filter((key) => isPlaceholder(env[key]));
+  const state = readConnectionState();
+  const currentRevision = envRevision();
+  const envChanged = Boolean(state && state.env_revision !== currentRevision);
+  emit({
+    ready: state?.ready === true && missing.length === 0 && !envChanged,
+    credentials_present: missing.length === 0,
+    env_changed_since_check: envChanged,
+    credentials_file: ENV_REL,
+    connection_state_file: CONNECTION_REL,
+    state,
+  });
 }
 
 async function runMe() {
@@ -492,6 +555,7 @@ function usage() {
   emit({
     usage: [
       "check",
+      "status",
       "me",
       "meetings list [--type upcoming]",
       "meetings get <id>",
@@ -512,6 +576,7 @@ async function main() {
   const command = args[0];
   if (!command || command === "help" || command === "--help") return usage();
   if (command === "check") return runCheck();
+  if (command === "status") return runStatus();
   if (command === "setup") {
     runSetup();
     return;
@@ -528,4 +593,7 @@ async function main() {
   process.exitCode = 1;
 }
 
-main().catch((error) => fail(error.message || String(error)));
+main().catch((error) => {
+  if (process.argv[2] === "check") writeConnectionState({ ready: false, reason: "connection_check_failed" });
+  fail(error.message || String(error));
+});

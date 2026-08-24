@@ -34,6 +34,12 @@ node scripts/zoom.mjs check
 - Exit `2`: `.env` was created or extended and opened. Ask the user to fill it, save, and say `סיימתי`; then run `check` again.
 - The script adds `.env` and `.atomi/` to `.gitignore`.
 
+### Setup completion handshake
+
+When the user says `סיימתי` after filling the file, immediately run `node scripts/zoom.mjs check` again. The command rereads `.env`; do not repeat setup and do not ask for credentials in chat.
+
+Only announce that Zoom is connected and continue to meeting operations when the fresh result contains both `ready: true` and `configuration_updated: true`. A successful check updates the secret-free project state at `.atomi/connections/zoom-scheduler.json`, so a later chat can inspect it with `node scripts/zoom.mjs status`. If the live check fails, report the error and keep the connection unready.
+
 Read [references/setup.md](references/setup.md) before guiding a first-time Zoom setup. Scopes must match the actions requested.
 
 ## Read operations

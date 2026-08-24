@@ -57,6 +57,33 @@ const where = run(WA, ["where"]);
 if (!where.stdout.includes("ENV=.env")) fail("relative path missing");
 
 const zoomFake = { ZOOM_ACCOUNT_ID: "fake-account", ZOOM_CLIENT_ID: "fake-client", ZOOM_CLIENT_SECRET: "fake-secret", ZOOM_USER_ID: "host@example.com" };
+const connectedEnv = fs.readFileSync(path.join(proj, ".env"), "utf8")
+  .replace("your_morning_api_key", "fake-morning-key")
+  .replace("your_morning_api_secret", "fake-morning-secret")
+  .replace("your_zoom_account_id", zoomFake.ZOOM_ACCOUNT_ID)
+  .replace("your_zoom_client_id", zoomFake.ZOOM_CLIENT_ID)
+  .replace("your_zoom_client_secret", zoomFake.ZOOM_CLIENT_SECRET)
+  .replace("your_zoom_host_email_or_user_id", zoomFake.ZOOM_USER_ID);
+fs.writeFileSync(path.join(proj, ".env"), connectedEnv);
+const morningReady = run(MORNING, ["check"], { MORNING_SKIP_NETWORK: "1" });
+if (morningReady.status !== 0 || !morningReady.stdout.includes('"configuration_updated": true')) fail("Morning successful check must update connection state");
+const zoomReady = run(ZOOM, ["check"], { ZOOM_SKIP_NETWORK: "1" });
+if (zoomReady.status !== 0 || !zoomReady.stdout.includes('"configuration_updated": true')) fail("Zoom successful check must update connection state");
+for (const service of ["morning", "zoom-scheduler"]) {
+  const connectionFile = path.join(proj, ".atomi", "connections", `${service}.json`);
+  if (!fs.existsSync(connectionFile)) fail(`${service} connection state file missing after successful check`);
+  const connection = JSON.parse(fs.readFileSync(connectionFile, "utf8"));
+  if (connection.ready !== true || connection.credentials_file !== ".env") fail(`${service} connection state was not marked ready`);
+}
+fs.appendFileSync(path.join(proj, ".env"), "\n# connection state invalidation check\n");
+for (const [service, script] of [["morning", MORNING], ["zoom-scheduler", ZOOM]]) {
+  const status = run(script, ["status"]);
+  if (status.status !== 0 || !status.stdout.includes('"ready": false') || !status.stdout.includes('"env_changed_since_check": true')) {
+    fail(`${service} status must become unready after .env changes`);
+  }
+}
+if (run(MORNING, ["check"], { MORNING_SKIP_NETWORK: "1" }).status !== 0) fail("Morning recheck after .env update");
+if (run(ZOOM, ["check"], { ZOOM_SKIP_NETWORK: "1" }).status !== 0) fail("Zoom recheck after .env update");
 const dryRun = run(ZOOM, ["meetings", "create", "--topic", "Test", "--start", "2026-08-25T10:00:00", "--dry-run"], zoomFake);
 if (dryRun.status !== 0 || !dryRun.stdout.includes('"dry_run": true')) fail("zoom create dry-run");
 const blockedDelete = run(ZOOM, ["meetings", "delete", "123456"], zoomFake);

@@ -31,6 +31,12 @@ node scripts/morning.mjs check
 - Exit `2` means `.env` was created or extended and opened for the user. Never ask the user to paste a key into chat. Ask them to save the file and say “סיימתי”, then run `check` again.
 - The script adds `.env` and `.atomi/` to `.gitignore`.
 
+### Setup completion handshake
+
+When the user says `סיימתי` after filling the file, immediately run `node scripts/morning.mjs check` again. The command rereads `.env`; do not repeat setup and do not ask for the credentials in chat.
+
+Only announce that Morning is connected and continue to Morning work when the fresh result contains both `ready: true` and `configuration_updated: true`. A successful check updates the secret-free project state at `.atomi/connections/morning.json`, so a later chat can inspect it with `node scripts/morning.mjs status`. If the live check fails, report the error and keep the connection unready.
+
 ## Safe read commands
 
 ```bash

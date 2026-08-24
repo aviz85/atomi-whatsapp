@@ -1,6 +1,6 @@
 {
   "name": "morning",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Connect Morning (Green Invoice) to Codex with OAuth2 API keys. Search clients and reports, manage payment links, and use a locked preview-to-issue invoice flow.",
   "author": { "name": "עסק אטומי", "url": "https://atomi.biz" },
   "homepage": "https://atomi.biz",
