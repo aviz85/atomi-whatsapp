@@ -1,6 +1,6 @@
 {
   "name": "zoom-scheduler",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Create and manage Zoom meetings from Codex, then coordinate calendar invitations and WhatsApp delivery with explicit approval.",
   "author": { "name": "עסק אטומי", "url": "https://atomi.biz" },
   "homepage": "https://atomi.biz/zoom",

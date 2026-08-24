@@ -48,6 +48,7 @@ const envText = fs.readFileSync(path.join(proj, ".env"), "utf8");
 if (!envText.includes("GREEN_API_") || !envText.includes("ELEVENLABS_API_KEY") || !envText.includes("MORNING_API_KEY") || !envText.includes("ZOOM_ACCOUNT_ID")) {
   fail(".env must hold WhatsApp, ElevenLabs, Morning and Zoom fields after all checks");
 }
+if (envText.includes("ZOOM_USER_ID=me")) fail("Server-to-Server OAuth must not default ZOOM_USER_ID to me");
 if (!fs.readFileSync(path.join(proj, ".gitignore"), "utf8").includes(".env")) fail("gitignore");
 if (fs.existsSync(path.join(home, ".atomi-whatsapp"))) fail("wrote to HOME");
 if (fs.existsSync(path.join(home, ".atomi"))) fail("a plugin wrote to HOME");
@@ -55,11 +56,21 @@ if (fs.existsSync(path.join(home, ".atomi"))) fail("a plugin wrote to HOME");
 const where = run(WA, ["where"]);
 if (!where.stdout.includes("ENV=.env")) fail("relative path missing");
 
-const zoomFake = { ZOOM_ACCOUNT_ID: "fake-account", ZOOM_CLIENT_ID: "fake-client", ZOOM_CLIENT_SECRET: "fake-secret" };
+const zoomFake = { ZOOM_ACCOUNT_ID: "fake-account", ZOOM_CLIENT_ID: "fake-client", ZOOM_CLIENT_SECRET: "fake-secret", ZOOM_USER_ID: "host@example.com" };
 const dryRun = run(ZOOM, ["meetings", "create", "--topic", "Test", "--start", "2026-08-25T10:00:00", "--dry-run"], zoomFake);
 if (dryRun.status !== 0 || !dryRun.stdout.includes('"dry_run": true')) fail("zoom create dry-run");
 const blockedDelete = run(ZOOM, ["meetings", "delete", "123456"], zoomFake);
 if (blockedDelete.status !== 3) fail("zoom delete must require approval");
+
+const legacyMeProject = path.join(tmp, "legacy-zoom-me-project");
+fs.mkdirSync(path.join(legacyMeProject, ".git"), { recursive: true });
+fs.writeFileSync(path.join(legacyMeProject, ".env"), "ZOOM_ACCOUNT_ID=fake-account\nZOOM_CLIENT_ID=fake-client\nZOOM_CLIENT_SECRET=fake-secret\nZOOM_USER_ID=me\n");
+const legacyMe = spawnSync(process.execPath, [ZOOM, "check"], {
+  cwd: legacyMeProject,
+  env: { ...process.env, HOME: home, ZOOM_NO_OPEN: "1", ZOOM_SKIP_NETWORK: "1" },
+  encoding: "utf8",
+});
+if (legacyMe.status !== 2 || !legacyMe.stdout.includes('"ready": false')) fail("legacy ZOOM_USER_ID=me must require correction");
 
 const legacyProject = path.join(tmp, "legacy-whatsapp-project");
 fs.mkdirSync(path.join(legacyProject, ".git"), { recursive: true });

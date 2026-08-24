@@ -53,11 +53,11 @@ The Zoom UI may show human-readable labels rather than scope strings. Search by 
 ZOOM_ACCOUNT_ID=
 ZOOM_CLIENT_ID=
 ZOOM_CLIENT_SECRET=
-ZOOM_USER_ID=me
+ZOOM_USER_ID=your-zoom-email@example.com
 ZOOM_TIMEZONE=Asia/Jerusalem
 ```
 
-`ZOOM_USER_ID` can be `me`, the host's email, or a Zoom user ID. If the S2S account rejects `me`, use the host email. Credentials stay project-local and `.env` is gitignored.
+Set `ZOOM_USER_ID` to the meeting host's Zoom email address or actual Zoom user ID. Do not use `me` with this Server-to-Server OAuth app; Zoom documents that keyword for user-level apps. Credentials stay project-local and `.env` is gitignored.
 
 Official references:
 

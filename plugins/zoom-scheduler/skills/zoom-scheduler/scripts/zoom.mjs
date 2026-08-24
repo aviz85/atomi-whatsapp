@@ -9,7 +9,7 @@ import { spawn } from "node:child_process";
 const TOKEN_URL = "https://zoom.us/oauth/token";
 const API_BASE = "https://api.zoom.us/v2";
 const ENV_REL = ".env";
-const REQUIRED = ["ZOOM_ACCOUNT_ID", "ZOOM_CLIENT_ID", "ZOOM_CLIENT_SECRET"];
+const REQUIRED = ["ZOOM_ACCOUNT_ID", "ZOOM_CLIENT_ID", "ZOOM_CLIENT_SECRET", "ZOOM_USER_ID"];
 
 function isPluginCache(value) {
   const normalized = String(value || "").replace(/\\/g, "/");
@@ -63,7 +63,7 @@ const ZOOM_BLOCK = `# ================= Zoom Scheduler =================
 ZOOM_ACCOUNT_ID=your_zoom_account_id
 ZOOM_CLIENT_ID=your_zoom_client_id
 ZOOM_CLIENT_SECRET=your_zoom_client_secret
-ZOOM_USER_ID=me
+ZOOM_USER_ID=your_zoom_host_email_or_user_id
 ZOOM_TIMEZONE=Asia/Jerusalem
 `;
 
@@ -79,7 +79,7 @@ function ensureEnvFile() {
     ["ZOOM_ACCOUNT_ID", "your_zoom_account_id"],
     ["ZOOM_CLIENT_ID", "your_zoom_client_id"],
     ["ZOOM_CLIENT_SECRET", "your_zoom_client_secret"],
-    ["ZOOM_USER_ID", "me"],
+    ["ZOOM_USER_ID", "your_zoom_host_email_or_user_id"],
     ["ZOOM_TIMEZONE", "Asia/Jerusalem"],
   ];
   const missing = defaults.filter(([key]) => !new RegExp("^\\s*" + key + "\\s*=", "m").test(current));
@@ -127,7 +127,7 @@ function readEnv() {
 
 function isPlaceholder(value) {
   const text = String(value || "").trim();
-  return !text || /^your_/i.test(text) || /x{4,}/i.test(text) || text === "...";
+  return !text || /^your_/i.test(text) || /x{4,}/i.test(text) || text === "..." || text.toLowerCase() === "me";
 }
 
 function emit(value) {
@@ -149,6 +149,7 @@ function runSetup() {
     setup: [
       "Zoom Marketplace -> Developer -> Created apps -> Server-to-Server OAuth",
       "Fill Account ID, Client ID and Client Secret in .env",
+      "Set ZOOM_USER_ID to the Zoom host email or actual user ID; do not use me for Server-to-Server OAuth",
       "Save the file, return to Codex, and say: סיימתי",
       "Never paste credentials into chat",
     ],
@@ -167,7 +168,7 @@ function config() {
     accountId: env.ZOOM_ACCOUNT_ID,
     clientId: env.ZOOM_CLIENT_ID,
     clientSecret: env.ZOOM_CLIENT_SECRET,
-    userId: env.ZOOM_USER_ID || "me",
+    userId: env.ZOOM_USER_ID,
     timezone: env.ZOOM_TIMEZONE || "Asia/Jerusalem",
   };
 }
