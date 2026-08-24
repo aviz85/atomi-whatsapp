@@ -1,0 +1,29 @@
+{
+  "name": "morning",
+  "version": "1.0.0",
+  "description": "Connect Morning (Green Invoice) to Codex with OAuth2 API keys. Search clients and reports, manage payment links, and use a locked preview-to-issue invoice flow.",
+  "author": { "name": "עסק אטומי", "url": "https://atomi.biz" },
+  "homepage": "https://atomi.biz",
+  "license": "MIT",
+  "keywords": ["morning", "green-invoice", "invoices", "payments", "billing", "oauth2"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Morning",
+    "shortDescription": "חשבוניות, לקוחות ולינקים לתשלום מתוך Codex",
+    "longDescription": "חיבור Morning (חשבונית ירוקה) דרך OAuth2 client_credentials. המפתחות נשמרים ב-.env של הפרויקט הנוכחי. כולל חיפוש ודוחות, ניהול לינקים לתשלום ותהליך נעול של תצוגה מקדימה לפני הפקת מסמך.",
+    "developerName": "עסק אטומי",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "websiteURL": "https://atomi.biz",
+    "composerIcon": "./assets/icon.svg",
+    "logo": "./assets/logo.svg",
+    "screenshots": [],
+    "defaultPrompt": [
+      "חבר לי את Morning",
+      "חפש לקוח ב-Morning",
+      "הכן תצוגה מקדימה של חשבונית",
+      "הצג את הלינקים הפעילים לתשלום"
+    ],
+    "brandColor": "#3B82F6"
+  }
+}

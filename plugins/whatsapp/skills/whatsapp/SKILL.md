@@ -1,7 +1,7 @@
 ---
 name: whatsapp
 description: Send and read WhatsApp messages via the Green API. Use when the user wants to send a WhatsApp message, a reminder, a notification, or to read recent incoming WhatsApp messages.
-version: "1.1.1"
+version: "1.1.2"
 author: atomi
 tags: [whatsapp, green-api, messaging]
 allowed-tools: Bash, Read

@@ -77,8 +77,7 @@ function ensureGitignore(root) {
   fs.appendFileSync(gi, suffix + "\n" + block);
 }
 
-// Fresh .env template (Hebrew guidance baked in so beginners see what to do when the file opens).
-const ENV_TEMPLATE = `# ================= WhatsApp - Green API =================
+const WHATSAPP_BLOCK = `# ================= WhatsApp - Green API =================
 # הקובץ הזה (.env) נמצא בשורש הפרויקט הנוכחי. לא מדביקים מפתחות בצ'אט.
 # הוא ברשימת .gitignore - לא עולה ל-GitHub.
 # מדביקים כאן את הערכים מהקונסולה של Green API, שומרים,
@@ -94,6 +93,10 @@ GREEN_API_TOKEN=your_token_here
 # מספר ה-WhatsApp שלך (עם קידומת המדינה) - כדי שאפשר יהיה לשלוח לעצמך.
 # תחליפו את ה-x's במספר האמיתי, למשל 972501234567:
 MY_PHONE=9725xxxxxxxx
+`;
+
+// Fresh .env template (Hebrew guidance baked in so beginners see what to do when the file opens).
+const ENV_TEMPLATE = `${WHATSAPP_BLOCK}
 
 # ================= ElevenLabs (רשות, אותו קובץ) =================
 # מפתח מ-https://elevenlabs.io/app/developers/api-keys
@@ -155,10 +158,18 @@ function ensureEnvFile() {
   ensureGitignore(root);
   if (copyLegacyIfPresent(dest)) return false;
   if (fs.existsSync(dest)) {
-    const current = fs.readFileSync(dest, "utf8");
-    if (!/^\s*MY_PHONE\s*=/m.test(current)) {
+    let current = fs.readFileSync(dest, "utf8");
+    const defaults = [
+      ["GREEN_API_URL", "https://XXXX.api.greenapi.com"],
+      ["GREEN_API_INSTANCE", "1234567890"],
+      ["GREEN_API_TOKEN", "your_token_here"],
+      ["MY_PHONE", "9725xxxxxxxx"],
+    ];
+    const missing = defaults.filter(([key]) => !new RegExp("^\\s*" + key + "\\s*=", "m").test(current));
+    if (missing.length) {
       const suffix = current.endsWith("\n") ? "" : "\n";
-      fs.appendFileSync(dest, suffix + "MY_PHONE=9725xxxxxxxx\n");
+      const lines = missing.map(([key, value]) => key + "=" + value).join("\n");
+      fs.appendFileSync(dest, suffix + "\n# ================= WhatsApp - Green API =================\n" + lines + "\n");
     }
     return false;
   }
