@@ -86,7 +86,7 @@ For a request such as “ניפגש מחר ב-10”:
 3. Check Google Calendar for conflicts and duplicates.
 4. Show the full plan and wait for approval.
 5. Create the Zoom meeting with the approved details.
-6. Create a Google Calendar event using the installed Google Calendar connector. Add the guest email, the `join_url` as location and in the description, and the same start/end/timezone. The Google Calendar event—not Zoom's `calendar_type` field—is the reliable source of the email invitation.
+6. Create a Google Calendar event using the installed official `google-calendar@openai-curated` connector. Add the guest email, the `join_url` as location and in the description, and the same start/end/timezone. The Google Calendar event—not Zoom's `calendar_type` field—is the reliable source of the email invitation. If the connector is missing, explain that it comes from the already-configured built-in OpenAI marketplace and can be installed with `codex plugin add google-calendar@openai-curated`; do not add another marketplace.
 7. If Google Calendar is unavailable, generate an `.ics` file inside the project. Explain that creating an ICS file does not email it automatically:
 
 ```bash
